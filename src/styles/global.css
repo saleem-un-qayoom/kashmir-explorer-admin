@@ -50,3 +50,9 @@ body {
 .badge-danger  { @apply bg-chinar; }
 .badge-info    { @apply bg-dal; }
 .badge-sapphire { @apply bg-sapphire; }
+.badge-neutral { @apply bg-ink-3; }
+
+.input {
+  @apply w-full rounded-btn border border-line bg-white px-3 py-2 text-sm text-ink transition focus:outline-none focus:border-dal focus:ring-1 focus:ring-dal/20 placeholder:text-ink-3;
+}
+.input:disabled { @apply bg-pashmina/40 text-ink-2 cursor-not-allowed; }

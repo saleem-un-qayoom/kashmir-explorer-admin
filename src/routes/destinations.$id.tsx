@@ -40,10 +40,10 @@ function DestinationDetail() {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: () =>
-      isNew
-        ? destinations.create(form)
-        : destinations.update(id, form),
+    mutationFn: async (): Promise<{ id?: string; updated?: string }> => {
+      if (isNew) return destinations.create(form);
+      return destinations.update(id, form);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['destinations'] });
       navigate({ to: '/destinations' });

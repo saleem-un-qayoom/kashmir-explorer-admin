@@ -1,18 +1,30 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { clsx } from 'clsx';
+import {
+  SquaresFour,
+  MapPin,
+  Tent,
+  Bed,
+  CreditCard,
+  Warning,
+  Image as ImageIcon,
+  ChartLine,
+  Gear,
+  type Icon as PhIcon,
+} from '@phosphor-icons/react';
 import { auth } from '@/lib/auth';
 
-const NAV = [
-  { to: '/',             label: 'Overview',    icon: '◆' },
-  { to: '/destinations', label: 'Destinations',icon: '📍' },
-  { to: '/treks',        label: 'Treks',       icon: '⛺' },
-  { to: '/providers',    label: 'Providers',   icon: '🛏' },
-  { to: '/bookings',     label: 'Bookings',    icon: '💳' },
-  { to: '/advisories',   label: 'Advisories',  icon: '⚠' },
-  { to: '/media',        label: 'Media',       icon: '🖼' },
-  { to: '/analytics',    label: 'Analytics',   icon: '📊' },
-  { to: '/settings',     label: 'Settings',    icon: '⚙' },
-] as const;
+const NAV: { to: string; label: string; Icon: PhIcon }[] = [
+  { to: '/',             label: 'Overview',     Icon: SquaresFour },
+  { to: '/destinations', label: 'Destinations', Icon: MapPin },
+  { to: '/treks',        label: 'Treks',        Icon: Tent },
+  { to: '/providers',    label: 'Providers',    Icon: Bed },
+  { to: '/bookings',     label: 'Bookings',     Icon: CreditCard },
+  { to: '/advisories',   label: 'Advisories',   Icon: Warning },
+  { to: '/media',        label: 'Media',        Icon: ImageIcon },
+  { to: '/analytics',    label: 'Analytics',    Icon: ChartLine },
+  { to: '/settings',     label: 'Settings',     Icon: Gear },
+];
 
 export function Layout() {
   const { location } = useRouterState();
@@ -34,6 +46,7 @@ export function Layout() {
         <nav className="flex-1 overflow-y-auto py-3">
           {NAV.map((n) => {
             const active = n.to === '/' ? path === '/' : path.startsWith(n.to);
+            const Ico = n.Icon;
             return (
               <Link
                 key={n.to}
@@ -45,7 +58,7 @@ export function Layout() {
                     : 'text-ink-2 hover:bg-pashmina/30 hover:text-ink border-l-2 border-transparent',
                 )}
               >
-                <span className="text-sm">{n.icon}</span>
+                <Ico size={18} weight={active ? 'duotone' : 'regular'} />
                 <span>{n.label}</span>
               </Link>
             );

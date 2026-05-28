@@ -7,6 +7,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { MapPin } from '@phosphor-icons/react';
 import { PageHeader } from '@/components/Layout';
 import { advisories } from '@/lib/api';
 import { liveOps } from '@/lib/ws';
@@ -71,8 +72,9 @@ function AdvisoriesPage() {
               <div className="flex-1">
                 <div className="font-semibold text-lg">{a.title}</div>
                 <div className="text-sm text-ink-2 mt-1">{a.body}</div>
-                <div className="font-mono text-[10px] text-ink-3 mt-2 tracking-wider">
-                  📍 {a.affected?.toUpperCase()} · UNTIL {new Date(a.valid_until).toLocaleDateString('en-IN')}
+                <div className="font-mono text-[10px] text-ink-3 mt-2 tracking-wider flex items-center gap-1">
+                  <MapPin size={12} weight="duotone" />
+                  {a.affected?.toUpperCase()} · UNTIL {new Date(a.valid_until).toLocaleDateString('en-IN')}
                 </div>
               </div>
               <span className="pill pill-neutral">{a.source}</span>
