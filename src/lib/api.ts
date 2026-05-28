@@ -102,6 +102,47 @@ export const advisories = {
   delete: (id: string) => apiDelete(`admin/advisories/${id}`),
 };
 
+/** Trail reports — community trail-condition reports (V3) */
+export interface TrailReport {
+  id: string;
+  category: string;       // snow | trail | water | wrong_path | blocked | unsafe | wildlife | other
+  severity: number;       // 1..5 (V3)
+  body?: string;
+  photo_url?: string;
+  waypoint_idx?: number;
+  status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
+  created_at: string;
+  expires_at?: string;
+  trek_slug: string;
+  trek_name: string;
+  reporter: string;
+  lat?: number;
+  lng?: number;
+}
+export const trailReports = {
+  list: (status: TrailReport['status'] = 'open') =>
+    apiGet<TrailReport[]>(`admin/reports?status=${status}`),
+  resolve: (id: string, status: 'resolved' | 'dismissed', admin_note?: string) =>
+    apiPost(`admin/reports/${id}/resolve`, { status, admin_note }),
+};
+
+/** Track recordings — saved GPX hikes (V3) */
+export interface TrackRecording {
+  id: string;
+  name: string;
+  user: string;
+  distance_m: number;
+  duration_s: number;
+  gain_m: number;
+  max_altitude_m?: number;
+  is_public: boolean;
+  trek_slug?: string;
+  created_at: string;
+}
+export const tracks = {
+  list: () => apiGet<TrackRecording[]>('admin/tracks'),
+};
+
 export interface Provider {
   id: string;
   type: string;

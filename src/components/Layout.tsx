@@ -10,20 +10,24 @@ import {
   Image as ImageIcon,
   ChartLine,
   Gear,
+  Path,
+  PersonSimpleHike,
   type Icon as PhIcon,
 } from '@phosphor-icons/react';
 import { auth } from '@/lib/auth';
 
 const NAV: { to: string; label: string; Icon: PhIcon }[] = [
-  { to: '/',             label: 'Overview',     Icon: SquaresFour },
-  { to: '/destinations', label: 'Destinations', Icon: MapPin },
-  { to: '/treks',        label: 'Treks',        Icon: Tent },
-  { to: '/providers',    label: 'Providers',    Icon: Bed },
-  { to: '/bookings',     label: 'Bookings',     Icon: CreditCard },
-  { to: '/advisories',   label: 'Advisories',   Icon: Warning },
-  { to: '/media',        label: 'Media',        Icon: ImageIcon },
-  { to: '/analytics',    label: 'Analytics',    Icon: ChartLine },
-  { to: '/settings',     label: 'Settings',     Icon: Gear },
+  { to: '/',              label: 'Overview',      Icon: SquaresFour },
+  { to: '/destinations',  label: 'Destinations',  Icon: MapPin },
+  { to: '/treks',         label: 'Treks',         Icon: Tent },
+  { to: '/trail-reports', label: 'Trail reports', Icon: Path },
+  { to: '/tracks',        label: 'Recordings',    Icon: PersonSimpleHike },
+  { to: '/providers',     label: 'Providers',     Icon: Bed },
+  { to: '/bookings',      label: 'Bookings',      Icon: CreditCard },
+  { to: '/advisories',    label: 'Advisories',    Icon: Warning },
+  { to: '/media',         label: 'Media',         Icon: ImageIcon },
+  { to: '/analytics',     label: 'Analytics',     Icon: ChartLine },
+  { to: '/settings',      label: 'Settings',      Icon: Gear },
 ];
 
 export function Layout() {
