@@ -1,9 +1,5 @@
 /**
- * Live-ops WebSocket — keeps the admin in sync with the same advisory
- * broadcasts that go to mobile clients.
- *
- * Auto-reconnects with exponential backoff. Subscribers receive parsed
- * events; unknown event types are passed through.
+ * Live-ops WebSocket.
  */
 
 export interface AdvisoryEvent {
@@ -16,10 +12,15 @@ export interface AdvisoryEvent {
 
 type Listener = (e: AdvisoryEvent) => void;
 
-const WS_URL =
-  (import.meta.env.VITE_WS_URL as string | undefined) ??
-  (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/^http/, 'ws').replace(/\/v1$/, '') + '/ws/advisories' ??
-  'ws://localhost:8080/ws/advisories';
+function buildWsUrl(): string {
+  const ws = process.env.NEXT_PUBLIC_WS_URL;
+  if (ws) return ws;
+  const api = process.env.NEXT_PUBLIC_API_BASE;
+  if (api) return api.replace(/^http/, 'ws').replace(/\/v1$/, '') + '/ws/advisories';
+  return 'ws://localhost:8080/ws/advisories';
+}
+
+const WS_URL = buildWsUrl();
 
 class LiveOps {
   private ws: WebSocket | null = null;
@@ -58,7 +59,9 @@ class LiveOps {
       try {
         const payload = JSON.parse(ev.data) as AdvisoryEvent;
         this.listeners.forEach((fn) => fn(payload));
-      } catch { /* ignore non-JSON */ }
+      } catch {
+        /* ignore non-JSON */
+      }
     });
     this.ws.addEventListener('close', () => {
       if (!this.closed) this.scheduleReconnect();

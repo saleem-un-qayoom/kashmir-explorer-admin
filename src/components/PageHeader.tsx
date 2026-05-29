@@ -1,0 +1,21 @@
+import { type ReactNode } from 'react';
+
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-pashmina/80 backdrop-blur px-8 py-5">
+      <div>
+        <h1 className="font-serif text-2xl font-bold tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-2">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
