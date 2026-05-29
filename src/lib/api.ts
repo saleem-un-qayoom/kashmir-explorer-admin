@@ -295,7 +295,8 @@ export interface Category {
   icon?: string;
   color?: string;
 }
-export const categories = crud<Category>('categories');
+export const categories = crud<Category>('categories') as CrudOps<Category> & { adminGet: (id: string) => Promise<Category> };
+(categories as any).adminGet = (id: string) => apiGet<Category>(`admin/categories/${id}`);
 
 export interface Region {
   id: string;
@@ -303,7 +304,8 @@ export interface Region {
   slug: string;
   description?: string;
 }
-export const regions = crud<Region>('regions');
+export const regions = crud<Region>('regions') as CrudOps<Region> & { adminGet: (id: string) => Promise<Region> };
+(regions as any).adminGet = (id: string) => apiGet<Region>(`admin/regions/${id}`);
 
 // ─── Cultural ───────────────────────────────────────────────
 
@@ -350,6 +352,7 @@ export const etiquette = crud<EtiquetteTip>('cultural/etiquette');
 
 export interface Permit {
   id: string;
+  slug: string;
   name: string;
   required: string;
   office: string;
@@ -360,7 +363,8 @@ export interface Permit {
   notes: string;
   official_url: string;
 }
-export const permits = crud<Permit>('permits');
+export const permits = crud<Permit>('permits') as CrudOps<Permit> & { adminGet: (id: string) => Promise<Permit> };
+(permits as any).adminGet = (id: string) => apiGet<Permit>(`admin/permits/${id}`);
 
 // ─── Photo Spots ────────────────────────────────────────────
 
@@ -388,7 +392,8 @@ export interface RoadStatus {
   closure_reason?: string;
   last_checked: string;
 }
-export const roadStatus = crud<RoadStatus>('roads/status');
+export const roadStatus = crud<RoadStatus>('roads/status') as CrudOps<RoadStatus> & { adminGet: (id: string) => Promise<RoadStatus> };
+(roadStatus as any).adminGet = (id: string) => apiGet<RoadStatus>(`admin/roads/status/${id}`);
 
 // ─── Images ────────────────────────────────────────────────────
 

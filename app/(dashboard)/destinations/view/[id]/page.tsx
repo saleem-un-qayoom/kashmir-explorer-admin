@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { destinations } from '@/lib/api';
 import { MapView } from '@/components/MapView';
 import { PageHeader } from '@/components/PageHeader';
+import { Section, Row } from '@/components/FormFields';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CATEGORY_COLORS: Record<string, string> = {
@@ -73,12 +74,7 @@ export default function DestinationView() {
           </Section>
 
           <Section title="Location">
-            <MapView
-              lat={d.lat}
-              lng={d.lng}
-              height={280}
-            />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-0">
               <Row label="Latitude" value={d.lat?.toFixed(4)} mono />
               <Row label="Longitude" value={d.lng?.toFixed(4)} mono />
               <Row label="Altitude (m)" value={d.altitude_m} mono />
@@ -214,25 +210,18 @@ export default function DestinationView() {
           )}
         </div>
       </div>
+
+      <div className="px-8 pb-8">
+        <Section title="Map">
+          <MapView
+            lat={d.lat}
+            lng={d.lng}
+            height={450}
+          />
+        </Section>
+      </div>
     </>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card p-6">
-      <h3 className="font-heading text-sm tracking-wider text-ink-3 mb-4">{title.toUpperCase()}</h3>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
 
-function Row({ label, value, mono }: { label: string; value?: string | number | null; mono?: boolean }) {
-  if (value == null || value === '') return null;
-  return (
-    <div>
-      <label className="block text-xs font-medium text-ink-2 mb-0.5">{label}</label>
-      <span className={`text-sm ${mono ? 'font-mono' : ''}`}>{value}</span>
-    </div>
-  );
-}

@@ -4,15 +4,28 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { destinations, categories as categoriesApi, type Destination } from '@/lib/api';
+import { Section, Field } from '@/components/FormFields';
+import { Input, Textarea, Select, Checkbox, MultiSelect } from '@/components/FormControls';
+import { destinations, categories as categoriesApi, regions, permits, type Destination } from '@/lib/api';
 import { ImageUploader } from '@/components/ImageUploader';
 import { MapView } from '@/components/MapView';
 import { TRAIL_FEATURES } from '@/components/FeatureChips';
 import { ToggleGrid } from '@/components/ToggleGrid';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const REGIONS = ['central', 'north', 'south', 'ladakh', 'jammu'];
-const SEASONS = ['year-round', 'summer', 'winter', 'spring', 'autumn'];
+const SEASON_OPTIONS = ['year-round', 'summer', 'winter', 'spring', 'autumn'].map((s) => ({ value: s, label: s }));
+const COVERAGE_OPTIONS = [
+  { value: '', label: 'Auto' },
+  { value: 'good', label: 'Good' },
+  { value: 'patchy', label: 'Patchy' },
+  { value: 'none', label: 'None' },
+];
+const TOILET_OPTIONS = [
+  { value: '', label: 'Unknown' },
+  { value: 'clean', label: 'Clean' },
+  { value: 'basic', label: 'Basic' },
+  { value: 'none', label: 'None' },
+];
 
 export default function DestinationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,10 +39,21 @@ export default function DestinationDetail() {
     enabled: !isNew,
   });
 
-  // Load real categories from the API so chips match the actual DB.
   const { data: allCats = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoriesApi.list(),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: allRegions = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: () => regions.list(),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: allPermits = [] } = useQuery({
+    queryKey: ['permits'],
+    queryFn: () => permits.list(),
     staleTime: 5 * 60_000,
   });
 
@@ -94,7 +118,7 @@ export default function DestinationDetail() {
         </div>
       )}
 
-      {/* AllTrails-style hero gallery — promoted to top of page */}
+      {/* Hero gallery */}
       {!isNew && (
         <div className="px-8 pt-6">
           <Section title="Hero gallery">
@@ -107,14 +131,15 @@ export default function DestinationDetail() {
       )}
 
       <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ─── Left column ─── */}
         <div className="space-y-6">
           <Section title="Basic Info">
             <Field label="Name" required>
-              <input className="input" value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} />
+              <Input value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} />
             </Field>
             <Field label="Slug">
-              <input
-                className="input font-mono text-sm"
+              <Input
+                className="font-mono text-sm"
                 value={form.slug ?? ''}
                 onChange={(e) => set('slug', e.target.value)}
                 placeholder={form.name ? slugify(form.name) : 'auto-generated from name'}
@@ -125,40 +150,37 @@ export default function DestinationDetail() {
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Name (Urdu)">
-                <input
-                  className="input"
+                <Input
                   dir="rtl"
                   value={form.name_urdu ?? ''}
                   onChange={(e) => set('name_urdu', e.target.value)}
                 />
               </Field>
               <Field label="Name (Hindi)">
-                <input
-                  className="input"
+                <Input
                   value={form.name_hindi ?? ''}
                   onChange={(e) => set('name_hindi', e.target.value)}
                 />
               </Field>
             </div>
             <Field label="Tagline">
-              <input
-                className="input"
+              <Input
                 value={form.tagline ?? ''}
                 onChange={(e) => set('tagline', e.target.value)}
                 placeholder="Short one-liner"
               />
             </Field>
             <Field label="Uniqueness">
-              <textarea
-                className="input min-h-[80px]"
+              <Textarea
+                className="min-h-[80px]"
                 value={form.uniqueness ?? ''}
                 onChange={(e) => set('uniqueness', e.target.value)}
                 placeholder="What makes this special?"
               />
             </Field>
             <Field label="Description">
-              <textarea
-                className="input min-h-[120px]"
+              <Textarea
+                className="min-h-[120px]"
                 value={form.description ?? ''}
                 onChange={(e) => set('description', e.target.value)}
                 placeholder="Full description..."
@@ -167,30 +189,17 @@ export default function DestinationDetail() {
           </Section>
 
           <Section title="Location">
-            <MapView
-              lat={form.lat}
-              lng={form.lng}
-              onMove={(lat, lng) => { set('lat', lat); set('lng', lng); }}
-              height={220}
-            />
             <div className="grid grid-cols-2 gap-4">
               <Field label="Region">
-                <select
-                  className="input"
+                <Select
+                  options={allRegions.map((r) => ({ value: r.slug, label: r.name }))}
                   value={form.region_slug ?? ''}
-                  onChange={(e) => set('region_slug' as any, e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => set('region_slug' as any, v)}
+                  placeholder="Select..."
+                />
               </Field>
               <Field label="District">
-                <input
-                  className="input"
+                <Input
                   value={form.district ?? ''}
                   onChange={(e) => set('district', e.target.value)}
                 />
@@ -198,58 +207,53 @@ export default function DestinationDetail() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <Field label="Latitude">
-                <input
-                  className="input font-mono"
+                <Input
                   type="number"
                   step="0.0001"
+                  className="font-mono"
                   value={form.lat ?? ''}
-                  onChange={(e) => set('lat', parseFloat(e.target.value))}
+                  onChange={(e) => set('lat', parseFloat(e.target.value) as any)}
                 />
               </Field>
               <Field label="Longitude">
-                <input
-                  className="input font-mono"
+                <Input
                   type="number"
                   step="0.0001"
+                  className="font-mono"
                   value={form.lng ?? ''}
-                  onChange={(e) => set('lng', parseFloat(e.target.value))}
+                  onChange={(e) => set('lng', parseFloat(e.target.value) as any)}
                 />
               </Field>
               <Field label="Altitude (m)">
-                <input
-                  className="input font-mono"
+                <Input
                   type="number"
+                  className="font-mono"
                   value={form.altitude_m ?? ''}
-                  onChange={(e) => set('altitude_m', parseInt(e.target.value))}
+                  onChange={(e) => set('altitude_m', parseInt(e.target.value) as any)}
                 />
               </Field>
             </div>
             <Field label="Distance from Srinagar (km)">
-              <input
-                className="input font-mono"
+              <Input
                 type="number"
+                className="font-mono"
                 value={form.distance_from_srinagar_km ?? ''}
-                onChange={(e) => set('distance_from_srinagar_km', parseInt(e.target.value))}
+                onChange={(e) => set('distance_from_srinagar_km', parseInt(e.target.value) as any)}
               />
             </Field>
           </Section>
         </div>
 
+        {/* ─── Right column ─── */}
         <div className="space-y-6">
           <Section title="Season & Access">
             <Field label="Season Type">
-              <select
-                className="input"
+              <Select
+                options={SEASON_OPTIONS}
                 value={form.season_type ?? ''}
-                onChange={(e) => set('season_type', e.target.value)}
-              >
-                <option value="">Select...</option>
-                {SEASONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set('season_type', v)}
+                placeholder="Select..."
+              />
             </Field>
             <Field label="Best Months">
               <div className="flex flex-wrap gap-2">
@@ -282,27 +286,19 @@ export default function DestinationDetail() {
               </div>
             </Field>
             <Field label="Entry Fee (INR)">
-              <input
-                className="input font-mono"
+              <Input
                 type="number"
+                className="font-mono"
                 value={form.entry_fee_inr ?? 0}
-                onChange={(e) => set('entry_fee_inr', parseInt(e.target.value))}
+                onChange={(e) => set('entry_fee_inr', parseInt(e.target.value) as any)}
               />
             </Field>
             <Field label="Permits">
-              <input
-                className="input"
-                value={(form.permits ?? []).join(', ')}
-                onChange={(e) =>
-                  set(
-                    'permits',
-                    e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  )
-                }
-                placeholder="ILP, wildlife (comma-separated)"
+              <MultiSelect
+                options={allPermits.map((p) => ({ value: p.slug, label: p.name }))}
+                value={form.permits ?? []}
+                onChange={(v) => set('permits', v as any)}
+                placeholder="Select permits…"
               />
             </Field>
           </Section>
@@ -327,6 +323,7 @@ export default function DestinationDetail() {
                 { id: 'sightseeing',    label: 'Sightseeing',    color: '#2A5266' },
                 { id: 'boating',        label: 'Boating',        color: '#4A8FB5' },
                 { id: 'skiing',         label: 'Skiing',         color: '#EDF2F5' },
+                { id: 'snowboarding',   label: 'Snowboarding',   color: '#B8C9D4' },
                 { id: 'bird-watching',  label: 'Bird watching',  color: '#2D6A4F' },
                 { id: 'camping',        label: 'Camping',        color: '#8B4513' },
                 { id: 'photography',    label: 'Photography',    color: '#C9A227' },
@@ -334,6 +331,8 @@ export default function DestinationDetail() {
                 { id: 'heritage-walk',  label: 'Heritage walk',  color: '#C72D3D' },
                 { id: 'river-rafting',  label: 'River rafting',  color: '#1F4788' },
                 { id: 'gondola',        label: 'Gondola',        color: '#2A5266' },
+                { id: 'golf',           label: 'Golf',           color: '#2D6A4F' },
+                { id: 'horse-riding',   label: 'Horse riding',   color: '#8B4513' },
                 { id: 'shopping',       label: 'Shopping',       color: '#D97444' },
               ]}
               onChange={(v) => set('activities', v)}
@@ -356,69 +355,40 @@ export default function DestinationDetail() {
             {(['jio', 'airtel', 'bsnl'] as const).map((op) => (
               <div key={op} className="flex items-center gap-3">
                 <span className="text-sm font-medium w-16 uppercase">{op}</span>
-                <select
-                  className="input flex-1"
-                  value={(form.network_coverage as any)?.[op] ?? ''}
-                  onChange={(e) => set('network_coverage', {
-                    ...((form.network_coverage ?? {}) as any),
-                    [op]: e.target.value || undefined,
-                  } as any)}
-                >
-                  <option value="">Auto</option>
-                  <option value="good">Good</option>
-                  <option value="patchy">Patchy</option>
-                  <option value="none">None</option>
-                </select>
+                <div className="flex-1">
+                  <Select
+                    options={COVERAGE_OPTIONS}
+                    value={(form.network_coverage as any)?.[op] ?? ''}
+                    onChange={(v) => set('network_coverage', {
+                      ...((form.network_coverage ?? {}) as any),
+                      [op]: v || undefined,
+                    } as any)}
+                    placeholder="Auto"
+                  />
+                </div>
               </div>
             ))}
           </Section>
 
           <Section title="Practical Info">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={(form.practical as any)?.atm ?? false} onChange={(e) => set('practical', { ...((form.practical ?? {}) as any), atm: e.target.checked } as any)} className="accent-dal w-4 h-4" />
-              <span className="text-sm font-medium">ATM available</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={(form.practical as any)?.drone ?? false} onChange={(e) => set('practical', { ...((form.practical ?? {}) as any), drone: e.target.checked } as any)} className="accent-chinar w-4 h-4" />
-              <span className="text-sm font-medium">Drone allowed</span>
-            </label>
-            <div className="grid grid-cols-2 gap-4 mt-3">
+            <Checkbox label="ATM available" checked={(form.practical as any)?.atm ?? false} onChange={(v) => set('practical', { ...((form.practical ?? {}) as any), atm: v } as any)} />
+            <Checkbox label="Drone allowed" checked={(form.practical as any)?.drone ?? false} onChange={(v) => set('practical', { ...((form.practical ?? {}) as any), drone: v } as any)} accent="chinar" />
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-ink-2 mb-1">Fuel station (km)</label>
-                <input className="input font-mono" type="number" value={(form.practical as any)?.fuel_km ?? ''} onChange={(e) => set('practical', { ...((form.practical ?? {}) as any), fuel_km: parseInt(e.target.value) || undefined } as any)} />
+                <Input type="number" className="font-mono" value={(form.practical as any)?.fuel_km ?? ''} onChange={(e) => set('practical', { ...((form.practical ?? {}) as any), fuel_km: parseInt(e.target.value) || undefined } as any)} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-ink-2 mb-1">Toilet</label>
-                <select className="input" value={(form.practical as any)?.toilet ?? ''} onChange={(e) => set('practical', { ...((form.practical ?? {}) as any), toilet: e.target.value || undefined } as any)}>
-                  <option value="">Unknown</option>
-                  <option value="clean">Clean</option>
-                  <option value="basic">Basic</option>
-                  <option value="none">None</option>
-                </select>
+                <Select options={TOILET_OPTIONS} value={(form.practical as any)?.toilet ?? ''} onChange={(v) => set('practical', { ...((form.practical ?? {}) as any), toilet: v || undefined } as any)} placeholder="Unknown" />
               </div>
             </div>
           </Section>
 
           <Section title="Publishing">
             <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.is_published ?? false}
-                  onChange={(e) => set('is_published', e.target.checked)}
-                  className="accent-dal w-4 h-4"
-                />
-                <span className="text-sm font-medium">Published</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.is_featured ?? false}
-                  onChange={(e) => set('is_featured', e.target.checked)}
-                  className="accent-saffron w-4 h-4"
-                />
-                <span className="text-sm font-medium">Featured</span>
-              </label>
+              <Checkbox label="Published" checked={form.is_published ?? false} onChange={(v) => set('is_published', v)} />
+              <Checkbox label="Featured" checked={form.is_featured ?? false} onChange={(v) => set('is_featured', v)} accent="saffron" />
             </div>
           </Section>
 
@@ -440,6 +410,17 @@ export default function DestinationDetail() {
           )}
         </div>
       </div>
+
+      <div className="px-8 pb-8">
+        <Section title="Map">
+          <MapView
+            lat={form.lat}
+            lng={form.lng}
+            onMove={(lat, lng) => { set('lat', lat); set('lng', lng); }}
+            height={500}
+          />
+        </Section>
+      </div>
     </>
   );
 }
@@ -447,24 +428,4 @@ export default function DestinationDetail() {
 function slugify(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card p-6">
-      <h3 className="font-heading text-sm tracking-wider text-ink-3 mb-4">{title.toUpperCase()}</h3>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-ink-2 mb-1">
-        {label} {required && <span className="text-chinar">*</span>}
-      </label>
-      {children}
-    </div>
-  );
 }

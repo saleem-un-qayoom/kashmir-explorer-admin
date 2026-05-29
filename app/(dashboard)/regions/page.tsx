@@ -2,70 +2,132 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
 import { PageHeader } from '@/components/PageHeader';
+import { Input } from '@/components/FormControls';
 import { regions, type Region } from '@/lib/api';
 
 export default function RegionsPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   const { data, isLoading } = useQuery({ queryKey: ['regions'], queryFn: regions.list });
-  const [show, setShow] = useState(false);
-  const [edit, setEdit] = useState<Region | null>(null);
-  const del = useMutation({ mutationFn: (id: string) => regions.remove(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['regions'] }) });
+  const del = useMutation({
+    mutationFn: (id: string) => regions.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['regions'] }),
+  });
+
+  const columns = useMemo(() => buildColumns(router, del.mutate), [router, del.mutate]);
+  const table = useReactTable({
+    data: data ?? [],
+    columns,
+    state: { sorting, globalFilter: search },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setSearch,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
     <>
-      <PageHeader title="Regions" subtitle={`${data?.length ?? 0} regions`} action={<button className="btn btn-primary" onClick={() => router.push('/regions/new')}>+ New region</button>} />
-      <div className="p-8">
+      <PageHeader
+        title="Regions"
+        subtitle={`${data?.length ?? 0} regions`}
+        action={<button className="btn btn-primary" onClick={() => router.push('/regions/new')}>+ New region</button>}
+      />
+      <div className="p-8 space-y-4">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search regions…" className="max-w-md" />
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-pashmina/30 border-b border-line">
-              <tr><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Name</th><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Slug</th><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Description</th><th></th></tr>
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="bg-pashmina/30 border-b border-line">
+                  {hg.headers.map((h) => (
+                    <th
+                      key={h.id}
+                      className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3 cursor-pointer select-none"
+                      onClick={h.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      {h.column.getIsSorted() === 'asc' && ' ↑'}
+                      {h.column.getIsSorted() === 'desc' && ' ↓'}
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody>
-              {isLoading && <tr><td colSpan={4} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>}
-              {data?.map((r) => (
-                <tr key={r.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-semibold">{r.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-ink-3">{r.slug}</td>
-                  <td className="px-4 py-3 text-ink-2 text-xs">{r.description ?? '—'}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button className="btn btn-ghost text-xs" onClick={() => { setEdit(r); setShow(true); }}>Edit</button>
-
-                    <button className="btn btn-ghost text-xs text-chinar" onClick={() => del.mutate(r.id)}>Delete</button>
-                  </td>
+              {isLoading && (
+                <tr><td colSpan={4} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>
+              )}
+              {!isLoading && table.getRowModel().rows.length === 0 && (
+                <tr><td colSpan={4} className="p-12 text-center font-quote italic text-xl text-ink-2">No regions match.</td></tr>
+              )}
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/regions/${row.original.id}`)}
+                  className="border-b border-line last:border-0 hover:bg-pashmina/40 cursor-pointer transition"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      {show && <RegionModal qc={qc} initial={edit} onClose={() => setShow(false)} />}
     </>
   );
 }
 
-function RegionModal({ qc, initial, onClose }: { qc: ReturnType<typeof useQueryClient>; initial: Region | null; onClose: () => void }) {
-  const [form, setForm] = useState<Partial<Region>>(initial ?? { name: '', slug: '' });
-  const save = useMutation({
-    mutationFn: () => initial ? regions.update(initial.id, form) : regions.create(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['regions'] }); onClose(); },
-  });
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-serif text-xl font-bold mb-4">{initial ? 'Edit' : 'New'} Region</h2>
-        <div className="space-y-3">
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Slug</label><input className="input font-mono" value={form.slug ?? ''} onChange={(e) => setForm({ ...form, slug: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><textarea className="input min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+const ch = createColumnHelper<Region>();
+
+function buildColumns(router: ReturnType<typeof useRouter>, onDelete: (id: string) => void) {
+  return [
+    ch.accessor('name', {
+      header: 'Name',
+      cell: (i) => (
+        <div>
+          <div className="font-semibold">{i.getValue()}</div>
+          <div className="font-mono text-[10px] text-ink-3 mt-0.5 tracking-wide">{i.row.original.slug}</div>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !form.name}>{save.isPending ? 'Saving...' : 'Save'}</button>
+      ),
+    }),
+    ch.accessor('description', {
+      header: 'Description',
+      cell: (i) => <span className="text-ink-2 text-xs">{i.getValue() ?? '—'}</span>,
+    }),
+    ch.display({
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/regions/view/${row.original.id}`)}>View</button>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/regions/${row.original.id}`)}>Edit</button>
+          <button
+            className="btn btn-ghost text-xs text-chinar"
+            onClick={() => { if (confirm(`Delete "${row.original.name}"?`)) onDelete(row.original.id); }}
+          >
+            Delete
+          </button>
         </div>
-      </div>
-    </div>
-  );
+      ),
+    }),
+  ];
 }

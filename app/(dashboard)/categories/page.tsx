@@ -2,77 +2,142 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
 import { PageHeader } from '@/components/PageHeader';
+import { Input } from '@/components/FormControls';
 import { categories, type Category } from '@/lib/api';
 
 export default function CategoriesPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   const { data, isLoading } = useQuery({ queryKey: ['categories'], queryFn: categories.list });
-  const [edit, setEdit] = useState<Category | null>(null);
-  const [show, setShow] = useState(false);
-  const del = useMutation({ mutationFn: (id: string) => categories.remove(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }) });
+  const del = useMutation({
+    mutationFn: (id: string) => categories.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+
+  const columns = useMemo(() => buildColumns(router, del.mutate), [router, del.mutate]);
+  const table = useReactTable({
+    data: data ?? [],
+    columns,
+    state: { sorting, globalFilter: search },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setSearch,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
     <>
-      <PageHeader title="Categories" subtitle={`${data?.length ?? 0} categories`} action={<button className="btn btn-primary" onClick={() => router.push('/categories/new')}>+ New category</button>} />
-      <div className="p-8">
+      <PageHeader
+        title="Categories"
+        subtitle={`${data?.length ?? 0} categories`}
+        action={<button className="btn btn-primary" onClick={() => router.push('/categories/new')}>+ New category</button>}
+      />
+      <div className="p-8 space-y-4">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search categories…" className="max-w-md" />
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-pashmina/30 border-b border-line">
-              <tr>
-                <th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Name</th>
-                <th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Slug</th>
-                <th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Icon</th>
-                <th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Color</th>
-                <th></th>
-              </tr>
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="bg-pashmina/30 border-b border-line">
+                  {hg.headers.map((h) => (
+                    <th
+                      key={h.id}
+                      className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3 cursor-pointer select-none"
+                      onClick={h.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      {h.column.getIsSorted() === 'asc' && ' ↑'}
+                      {h.column.getIsSorted() === 'desc' && ' ↓'}
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody>
-              {isLoading && <tr><td colSpan={5} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>}
-              {data?.map((c) => (
-                <tr key={c.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-semibold">{c.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-ink-3">{c.slug}</td>
-                  <td className="px-4 py-3">{c.icon ?? '—'}</td>
-                  <td className="px-4 py-3">{c.color && <span className="inline-block w-4 h-4 rounded" style={{ backgroundColor: c.color }} />}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button className="btn btn-ghost text-xs" onClick={() => { setEdit(c); setShow(true); }}>Edit</button>
-                    <button className="btn btn-ghost text-xs text-chinar" onClick={() => del.mutate(c.id)}>Delete</button>
-                  </td>
+              {isLoading && (
+                <tr><td colSpan={6} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>
+              )}
+              {!isLoading && table.getRowModel().rows.length === 0 && (
+                <tr><td colSpan={6} className="p-12 text-center font-quote italic text-xl text-ink-2">No categories match.</td></tr>
+              )}
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/categories/${row.original.id}`)}
+                  className="border-b border-line last:border-0 hover:bg-pashmina/40 cursor-pointer transition"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      {show && <CategoryModal qc={qc} initial={edit} onClose={() => setShow(false)} />}
     </>
   );
 }
 
-function CategoryModal({ qc, initial, onClose }: { qc: ReturnType<typeof useQueryClient>; initial: Category | null; onClose: () => void }) {
-  const [form, setForm] = useState<Partial<Category>>(initial ?? { name: '', slug: '' });
-  const save = useMutation({
-    mutationFn: () => initial ? categories.update(initial.id, form) : categories.create(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['categories'] }); onClose(); },
-  });
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-serif text-xl font-bold mb-4">{initial ? 'Edit' : 'New'} Category</h2>
-        <div className="space-y-3">
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Slug</label><input className="input font-mono" value={form.slug ?? ''} onChange={(e) => setForm({ ...form, slug: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Icon</label><input className="input" value={form.icon ?? ''} onChange={(e) => setForm({ ...form, icon: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Color</label><input type="color" className="h-10 w-full rounded-btn border border-line cursor-pointer" value={form.color ?? '#000000'} onChange={(e) => setForm({ ...form, color: e.target.value })} /></div>
+const ch = createColumnHelper<Category>();
+
+function buildColumns(router: ReturnType<typeof useRouter>, onDelete: (id: string) => void) {
+  return [
+    ch.accessor('name', {
+      header: 'Name',
+      cell: (i) => (
+        <div>
+          <div className="font-semibold">{i.getValue()}</div>
+          <div className="font-mono text-[10px] text-ink-3 mt-0.5 tracking-wide">{i.row.original.slug}</div>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !form.name || !form.slug}>{save.isPending ? 'Saving...' : 'Save'}</button>
+      ),
+    }),
+    ch.accessor('icon', {
+      header: 'Icon',
+      cell: (i) => i.getValue() ?? '—',
+    }),
+    ch.accessor('color', {
+      header: 'Color',
+      cell: (i) =>
+        i.getValue() ? (
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-5 h-5 rounded-card" style={{ backgroundColor: i.getValue() }} />
+            <span className="font-mono text-[10px] text-ink-3">{i.getValue()}</span>
+          </div>
+        ) : '—',
+    }),
+    ch.display({
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/categories/view/${row.original.id}`)}>View</button>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/categories/${row.original.id}`)}>Edit</button>
+          <button
+            className="btn btn-ghost text-xs text-chinar"
+            onClick={() => { if (confirm(`Delete "${row.original.name}"?`)) onDelete(row.original.id); }}
+          >
+            Delete
+          </button>
         </div>
-      </div>
-    </div>
-  );
+      ),
+    }),
+  ];
 }

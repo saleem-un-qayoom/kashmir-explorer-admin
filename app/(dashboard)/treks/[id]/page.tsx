@@ -4,6 +4,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
+import { Section, Field } from '@/components/FormFields';
+import { Input, Textarea, Select, Checkbox } from '@/components/FormControls';
 import { treks, tracks, apiGet, type Trek } from '@/lib/api';
 import { ImageUploader } from '@/components/ImageUploader';
 import { TrailEditor } from '@/components/TrailEditor';
@@ -22,8 +24,13 @@ import { ToggleGrid } from '@/components/ToggleGrid';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DIFFICULTIES = ['easy', 'moderate', 'hard', 'strenuous'] as const;
-const TYPES = ['meadow', 'alpine_lake', 'glacier', 'pass', 'valley'] as const;
+const TYPES = ['meadow', 'alpine_lake', 'glacier', 'pass', 'valley', 'summit', 'pilgrimage'] as const;
 const STATUSES = ['open', 'closing-soon', 'closed'] as const;
+
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d, label: d }));
+const TYPE_OPTIONS = TYPES.map((t) => ({ value: t, label: t.replace('_', ' ') }));
+const STATUS_OPTIONS = STATUSES.map((s) => ({ value: s, label: s.replace('-', ' ') }));
+const ROUTE_TYPE_OPTIONS = ROUTE_TYPES.map((r) => ({ value: r.id, label: r.label }));
 
 export default function TrekDetail() {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +51,7 @@ export default function TrekDetail() {
     permits: [],
     guide_available: true,
     ams_risk: false,
-    is_published: true, // default publish — author can uncheck to keep as draft
+    is_published: true,
   });
   const [mapMode, setMapMode] = useState<'2d' | '3d'>('3d');
 
@@ -54,7 +61,6 @@ export default function TrekDetail() {
 
   const save = useMutation({
     mutationFn: async () => {
-      // Auto-slug + sanity-check before the network round-trip.
       const payload: any = { ...form };
       if (!payload.name?.trim()) {
         throw new Error('Trek name is required.');
@@ -81,7 +87,6 @@ export default function TrekDetail() {
         subtitle={id === 'new' ? 'Add a new trek route' : form.slug}
         action={
           <div className="flex items-center gap-3">
-            {/* Publish status pill — always visible so it's never missed */}
             <label className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer text-xs font-medium transition ${
               (form as any).is_published
                 ? 'bg-emerald/10 border-emerald text-emerald'
@@ -109,7 +114,7 @@ export default function TrekDetail() {
         </div>
       )}
 
-      {/* AllTrails-style hero strip — gallery + at-a-glance stats */}
+      {/* Hero strip */}
       {id !== 'new' && (
         <div className="px-8 pt-6">
           <Section title="Hero gallery">
@@ -122,7 +127,7 @@ export default function TrekDetail() {
         </div>
       )}
 
-      {/* Side panels — recent trail reports + community recordings */}
+      {/* Side panels */}
       {id !== 'new' && form.slug && (
         <div className="px-8 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <TrailReportsSidePanel slug={form.slug} />
@@ -135,59 +140,53 @@ export default function TrekDetail() {
           <Section title="Basic Info">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Name" required>
-                <input className="input" value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} />
+                <Input value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} />
               </Field>
               <Field label="Slug" required>
-                <input className="input font-mono text-sm" value={form.slug ?? ''} onChange={(e) => set('slug', e.target.value)} placeholder="great-lakes" />
+                <Input className="font-mono text-sm" value={form.slug ?? ''} onChange={(e) => set('slug', e.target.value)} placeholder="great-lakes" />
               </Field>
             </div>
             <Field label="Tagline">
-              <input className="input" value={form.tagline ?? ''} onChange={(e) => set('tagline', e.target.value)} placeholder="Short one-liner" />
+              <Input value={form.tagline ?? ''} onChange={(e) => set('tagline', e.target.value)} placeholder="Short one-liner" />
             </Field>
             <Field label="Uniqueness">
-              <textarea className="input min-h-[60px]" value={form.uniqueness ?? ''} onChange={(e) => set('uniqueness', e.target.value)} placeholder="What makes this special?" />
+              <Textarea className="min-h-[60px]" value={form.uniqueness ?? ''} onChange={(e) => set('uniqueness', e.target.value)} placeholder="What makes this special?" />
             </Field>
           </Section>
 
           <Section title="Route Details">
             <div className="grid grid-cols-3 gap-4">
               <Field label="Difficulty">
-                <select className="input" value={form.difficulty} onChange={(e) => set('difficulty', e.target.value as any)}>
-                  {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <Select options={DIFFICULTY_OPTIONS} value={form.difficulty} onChange={(v) => set('difficulty', v as any)} />
               </Field>
               <Field label="Type">
-                <select className="input" value={form.trek_type} onChange={(e) => set('trek_type', e.target.value)}>
-                  {TYPES.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-                </select>
+                <Select options={TYPE_OPTIONS} value={form.trek_type} onChange={(v) => set('trek_type', v)} />
               </Field>
               <Field label="Status">
-                <select className="input" value={form.status} onChange={(e) => set('status', e.target.value)}>
-                  {STATUSES.map((s) => <option key={s} value={s}>{s.replace('-', ' ')}</option>)}
-                </select>
+                <Select options={STATUS_OPTIONS} value={form.status} onChange={(v) => set('status', v)} />
               </Field>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <Field label="Duration (days)">
-                <input className="input" type="number" min={1} value={form.duration_days ?? ''} onChange={(e) => set('duration_days', parseInt(e.target.value))} />
+                <Input type="number" min={1} value={form.duration_days ?? ''} onChange={(e) => set('duration_days', parseInt(e.target.value) as any)} />
               </Field>
               <Field label="Distance (km)">
-                <input className="input font-mono" type="number" step="0.1" value={form.distance_km ?? ''} onChange={(e) => set('distance_km' as any, parseFloat(e.target.value))} />
+                <Input type="number" step="0.1" className="font-mono" value={form.distance_km ?? ''} onChange={(e) => set('distance_km' as any, parseFloat(e.target.value) as any)} />
               </Field>
               <Field label="Max altitude (m)">
-                <input className="input font-mono" type="number" value={form.max_altitude_m ?? ''} onChange={(e) => set('max_altitude_m', parseInt(e.target.value))} />
+                <Input type="number" className="font-mono" value={form.max_altitude_m ?? ''} onChange={(e) => set('max_altitude_m', parseInt(e.target.value) as any)} />
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Start point">
-                <input className="input" value={form.start_point ?? ''} onChange={(e) => set('start_point', e.target.value)} placeholder="Sonamarg" />
+                <Input value={form.start_point ?? ''} onChange={(e) => set('start_point', e.target.value)} placeholder="Sonamarg" />
               </Field>
               <Field label="End point">
-                <input className="input" value={form.end_point ?? ''} onChange={(e) => set('end_point', e.target.value)} placeholder="Naranag" />
+                <Input value={form.end_point ?? ''} onChange={(e) => set('end_point', e.target.value)} placeholder="Naranag" />
               </Field>
             </div>
             <Field label="Closure reason">
-              <input className="input" value={form.closure_reason ?? ''} onChange={(e) => set('closure_reason', e.target.value)} placeholder="If closed, why?" />
+              <Input value={form.closure_reason ?? ''} onChange={(e) => set('closure_reason', e.target.value)} placeholder="If closed, why?" />
             </Field>
           </Section>
 
@@ -212,8 +211,8 @@ export default function TrekDetail() {
               </div>
             </Field>
             <Field label="Required Permits">
-              <input className="input" value={(form.permits ?? []).join(', ')}
-                onChange={(e) => set('permits', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+              <Input value={(form.permits ?? []).join(', ')}
+                onChange={(e) => set('permits', e.target.value.split(',').map((s) => s.trim()).filter(Boolean) as any)}
                 placeholder="ILP, wildlife (comma-separated)" />
             </Field>
           </Section>
@@ -221,21 +220,17 @@ export default function TrekDetail() {
 
         <div className="space-y-6">
           <Section title="Map & Trail">
-            {/* GPX import — populates polyline + waypoints + optionally trek name */}
             <GPXUploader
               onParsed={(gpx: ParsedGPX) => {
                 setForm((f: any) => {
                   const next = {
                     ...f,
                     path_geojson: gpx.polyline,
-                    // Each <trkseg> in the GPX → one phase (day) in the editor.
                     path_phases: gpx.phases,
                   };
-                  // Merge waypoints if the GPX brings any (don't blow away
-                  // existing manual entries if the file has none).
                   if (gpx.waypoints.length) {
                     next.waypoints = gpx.waypoints.map((w, i) => ({
-                      day: 1, // editor lets the user split across days afterwards
+                      day: 1,
                       name: w.name || `Waypoint ${i + 1}`,
                       type: w.type,
                       altitudeM: w.altitudeM,
@@ -249,14 +244,12 @@ export default function TrekDetail() {
                       name: w.name,
                     }));
                   }
-                  // Best-effort autofill for empty fields
                   if (!f.name && gpx.trackName) next.name = gpx.trackName;
                   return next;
                 });
               }}
             />
 
-            {/* Clear trail (manual reset before re-drawing or re-uploading) */}
             {((form as any).path_geojson?.length || form.waypoints?.length) && (
               <button
                 type="button"
@@ -277,7 +270,6 @@ export default function TrekDetail() {
               </button>
             )}
 
-            {/* 2D / 3D toggle */}
             <div className="flex gap-1 mb-3 p-0.5 bg-pashmina/60 rounded-md w-fit">
               {(['2d', '3d'] as const).map((m) => (
                 <button
@@ -301,8 +293,6 @@ export default function TrekDetail() {
                 onChange={({ polyline, points, phases }) => {
                   setForm((f: any) => ({
                     ...f,
-                    // Persist both shapes — the legacy single polyline (largest day)
-                    // and the new per-day phases array.
                     path_geojson: polyline,
                     path_phases: phases ?? [],
                     waypoint_coords: points.map((p) => ({
@@ -321,8 +311,6 @@ export default function TrekDetail() {
                 height={300}
               />
             )}
-            {/* Sanity-check button — opens Google Maps directions to the first
-                waypoint so content teams can verify the trailhead coords. */}
             {(form.waypoints?.[0]?.lat && form.waypoints?.[0]?.lng) ? (
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${form.waypoints[0].lat},${form.waypoints[0].lng}&travelmode=driving`}
@@ -360,15 +348,7 @@ export default function TrekDetail() {
           </Section>
 
           <Section title="Safety">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.ams_risk ?? false}
-                onChange={(e) => set('ams_risk', e.target.checked)}
-                className="accent-chinar w-4 h-4"
-              />
-              <span className="text-sm font-medium">AMS risk (high altitude)</span>
-            </label>
+            <Checkbox label="AMS risk (high altitude)" checked={form.ams_risk ?? false} onChange={(v) => set('ams_risk', v)} accent="chinar" />
             <div className="text-xs text-ink-3">
               When checked, the mobile app shows the AMS Coach banner on the trek detail (also auto-shows when max altitude ≥ 3000 m).
             </div>
@@ -393,33 +373,16 @@ export default function TrekDetail() {
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Route type">
-                <select
-                  className="input"
-                  value={form.route_type ?? 'out-and-back'}
-                  onChange={(e) => set('route_type' as any, e.target.value as any)}
-                >
-                  {ROUTE_TYPES.map((r) => (
-                    <option key={r.id} value={r.id}>{r.label}</option>
-                  ))}
-                </select>
+                <Select options={ROUTE_TYPE_OPTIONS} value={form.route_type ?? 'out-and-back'} onChange={(v) => set('route_type' as any, v)} />
               </Field>
               <Field label="Elevation gain (m)">
-                <input
-                  className="input font-mono"
-                  type="number"
-                  value={form.elevation_gain_m ?? ''}
-                  onChange={(e) => set('elevation_gain_m' as any, parseInt(e.target.value) as any)}
-                  placeholder="e.g. 1850"
-                />
+                <Input type="number" className="font-mono" value={form.elevation_gain_m ?? ''} onChange={(e) => set('elevation_gain_m' as any, parseInt(e.target.value) as any)} placeholder="e.g. 1850" />
               </Field>
             </div>
           </Section>
 
           <Section title="Publishing">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={(form as any).is_published ?? false} onChange={(e) => set('is_published' as any, e.target.checked)} className="accent-dal w-4 h-4" />
-              <span className="text-sm font-medium">Published</span>
-            </label>
+            <Checkbox label="Published" checked={(form as any).is_published ?? false} onChange={(v) => set('is_published' as any, v)} />
           </Section>
 
         </div>
@@ -428,7 +391,7 @@ export default function TrekDetail() {
   );
 }
 
-/* ─── Side panels: trail conditions + community recordings ─── */
+/* ─── Side panels ────────────────────────────────────── */
 
 function TrailReportsSidePanel({ slug }: { slug: string }) {
   const q = useQuery({
@@ -469,7 +432,6 @@ function TrailReportsSidePanel({ slug }: { slug: string }) {
 }
 
 function RecordingsSidePanel({ slug }: { slug: string }) {
-  // Show recordings that match this trek_slug
   const q = useQuery({
     queryKey: ['tracks', 'admin'],
     queryFn: () => tracks.list(),
@@ -504,20 +466,15 @@ function RecordingsSidePanel({ slug }: { slug: string }) {
   );
 }
 
-/** kebab-case slug from a free-text name. Mirrors the Go side's
- *  expectation: lowercase, ASCII, hyphen-separated, no leading/trailing
- *  hyphens. "Kashmir Great Lakes" → "kashmir-great-lakes". */
 function slugify(s: string): string {
   return s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')      // strip diacritics
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
 
-/** Coerce legacy single-polyline data into the new phase shape so the
- *  multi-day editor can read it. New treks save `path_phases` directly. */
 function normalizePhases(
   legacyPath: any,
   phases: PhaseSegment[] | undefined,
@@ -527,24 +484,4 @@ function normalizePhases(
     return [{ day: 1, coordinates: legacyPath as [number, number][] }];
   }
   return [{ day: 1, coordinates: [] }];
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="card p-6">
-      <h3 className="font-heading text-sm tracking-wider text-ink-3 mb-4">{title.toUpperCase()}</h3>
-      <div className="space-y-4">{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-ink-2 mb-1">
-        {label} {required && <span className="text-chinar">*</span>}
-      </label>
-      {children}
-    </div>
-  );
 }

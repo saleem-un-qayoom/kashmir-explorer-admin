@@ -2,87 +2,151 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from '@tanstack/react-table';
 import { PageHeader } from '@/components/PageHeader';
+import { Input } from '@/components/FormControls';
 import { permits, type Permit } from '@/lib/api';
+
+const STATUS_MAP: Record<string, string> = {
+  always: 'pill-success',
+  seasonal: 'pill-warning',
+  restricted: 'pill-danger',
+  open: 'pill-info',
+};
 
 export default function PermitsPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   const { data, isLoading } = useQuery({ queryKey: ['permits'], queryFn: permits.list });
-  const [show, setShow] = useState(false);
-  const [edit, setEdit] = useState<Permit | null>(null);
-  const del = useMutation({ mutationFn: (id: string) => permits.remove(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['permits'] }) });
+  const del = useMutation({
+    mutationFn: (id: string) => permits.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['permits'] }),
+  });
+
+  const columns = useMemo(() => buildColumns(router, del.mutate), [router, del.mutate]);
+  const table = useReactTable({
+    data: data ?? [],
+    columns,
+    state: { sorting, globalFilter: search },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setSearch,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
     <>
-      <PageHeader title="Permits" subtitle={`${data?.length ?? 0} permit types`} action={<button className="btn btn-primary" onClick={() => router.push('/permits/new')}>+ New permit</button>} />
-      <div className="p-8">
+      <PageHeader
+        title="Permits"
+        subtitle={`${data?.length ?? 0} permit types`}
+        action={<button className="btn btn-primary" onClick={() => router.push('/permits/new')}>+ New permit</button>}
+      />
+      <div className="p-8 space-y-4">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search permits…" className="max-w-md" />
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-pashmina/30 border-b border-line">
-              <tr><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Name</th><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Cost</th><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Office</th><th className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3">Status</th><th></th></tr>
+            <thead>
+              {table.getHeaderGroups().map((hg) => (
+                <tr key={hg.id} className="bg-pashmina/30 border-b border-line">
+                  {hg.headers.map((h) => (
+                    <th
+                      key={h.id}
+                      className="text-left px-4 py-3 font-mono text-[10px] tracking-wider text-ink-3 cursor-pointer select-none"
+                      onClick={h.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(h.column.columnDef.header, h.getContext())}
+                      {h.column.getIsSorted() === 'asc' && ' ↑'}
+                      {h.column.getIsSorted() === 'desc' && ' ↓'}
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody>
-              {isLoading && <tr><td colSpan={5} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>}
-              {data?.map((p) => (
-                <tr key={p.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-3 font-semibold">{p.name}</td>
-                  <td className="px-4 py-3 font-mono">{p.cost_inr}</td>
-                  <td className="px-4 py-3 text-xs text-ink-2">{p.office}</td>
-                  <td className="px-4 py-3"><span className={`pill ${p.status === 'always' ? 'pill-success' : p.status === 'seasonal' ? 'pill-warning' : 'pill-info'}`}>{p.status.toUpperCase()}</span></td>
-                  <td className="px-4 py-3 text-right">
-                    <button className="btn btn-ghost text-xs" onClick={() => { setEdit(p); setShow(true); }}>Edit</button>
-
-                    <button className="btn btn-ghost text-xs text-chinar" onClick={() => del.mutate(p.id)}>Delete</button>
-                  </td>
+              {isLoading && (
+                <tr><td colSpan={6} className="p-8 text-center font-quote italic text-ink-2">Loading…</td></tr>
+              )}
+              {!isLoading && table.getRowModel().rows.length === 0 && (
+                <tr><td colSpan={6} className="p-12 text-center font-quote italic text-xl text-ink-2">No permits match.</td></tr>
+              )}
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/permits/${row.original.id}`)}
+                  className="border-b border-line last:border-0 hover:bg-pashmina/40 cursor-pointer transition"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      {show && <PermitModal qc={qc} initial={edit} onClose={() => setShow(false)} />}
     </>
   );
 }
 
-const STATUSES = ['open', 'seasonal', 'always'] as const;
+const ch = createColumnHelper<Permit>();
 
-function PermitModal({ qc, initial, onClose }: { qc: ReturnType<typeof useQueryClient>; initial: Permit | null; onClose: () => void }) {
-  const [form, setForm] = useState<Partial<Permit>>(initial ?? { name: '', required: '', office: '', status: 'open', processing_days: '', cost_inr: '', validity: '', notes: '', official_url: '' });
-  const save = useMutation({
-    mutationFn: () => initial ? permits.update(initial.id, form) : permits.create(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['permits'] }); onClose(); },
-  });
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="card w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-serif text-xl font-bold mb-4">{initial ? 'Edit' : 'New'} Permit</h2>
-        <div className="space-y-3 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div><label className="block text-xs font-medium text-ink-2 mb-1">Required for</label><input className="input" value={form.required ?? ''} onChange={(e) => setForm({ ...form, required: e.target.value })} /></div>
-          </div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Office</label><input className="input" value={form.office ?? ''} onChange={(e) => setForm({ ...form, office: e.target.value })} /></div>
-          <div className="grid grid-cols-3 gap-3">
-            <div><label className="block text-xs font-medium text-ink-2 mb-1">Processing</label><input className="input" value={form.processing_days ?? ''} onChange={(e) => setForm({ ...form, processing_days: e.target.value })} placeholder="1-2 days" /></div>
-            <div><label className="block text-xs font-medium text-ink-2 mb-1">Cost (INR)</label><input className="input" value={form.cost_inr ?? ''} onChange={(e) => setForm({ ...form, cost_inr: e.target.value })} /></div>
-            <div><label className="block text-xs font-medium text-ink-2 mb-1">Validity</label><input className="input" value={form.validity ?? ''} onChange={(e) => setForm({ ...form, validity: e.target.value })} placeholder="30 days" /></div>
-          </div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Status</label>
-            <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as any })}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-            </select>
-          </div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Notes</label><textarea className="input min-h-[60px]" value={form.notes ?? ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-          <div><label className="block text-xs font-medium text-ink-2 mb-1">Official URL</label><input className="input font-mono text-xs" value={form.official_url ?? ''} onChange={(e) => setForm({ ...form, official_url: e.target.value })} /></div>
+function buildColumns(router: ReturnType<typeof useRouter>, onDelete: (id: string) => void) {
+  return [
+    ch.accessor('name', {
+      header: 'Name',
+      cell: (i) => (
+        <div>
+          <div className="font-semibold">{i.getValue()}</div>
+          <div className="font-mono text-[10px] text-ink-3 mt-0.5">{i.row.original.required}</div>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !form.name}>{save.isPending ? 'Saving...' : 'Save'}</button>
+      ),
+    }),
+    ch.accessor('cost_inr', {
+      header: 'Cost',
+      cell: (i) => <span className="font-mono">₹{i.getValue()}</span>,
+    }),
+    ch.accessor('office', {
+      header: 'Office',
+      cell: (i) => <span className="text-xs text-ink-2">{i.getValue()}</span>,
+    }),
+    ch.accessor('status', {
+      header: 'Status',
+      cell: (i) => (
+        <span className={`pill ${STATUS_MAP[i.getValue()] ?? 'pill-neutral'}`}>
+          {i.getValue().toUpperCase()}
+        </span>
+      ),
+    }),
+    ch.display({
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/permits/view/${row.original.id}`)}>View</button>
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/permits/${row.original.id}`)}>Edit</button>
+          <button
+            className="btn btn-ghost text-xs text-chinar"
+            onClick={() => { if (confirm(`Delete "${row.original.name}"?`)) onDelete(row.original.id); }}
+          >
+            Delete
+          </button>
         </div>
-      </div>
-    </div>
-  );
+      ),
+    }),
+  ];
 }

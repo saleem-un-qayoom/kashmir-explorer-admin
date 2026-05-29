@@ -1,22 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-interface Props {
-  /** Centre + marker position. If null, uses default Kashmir. */
-  lat?: number | null;
-  lng?: number | null;
-  /** Callback when marker is dragged. If omitted, marker is read-only. */
-  onMove?: (lat: number, lng: number) => void;
-  /** Trail polyline coordinates [[lat, lng], ...] */
-  trail?: [number, number][];
-  /** Height in px */
-  height?: number;
-}
-
-// Fix Leaflet's broken default icon paths
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -24,16 +11,51 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+interface Props {
+  lat?: number | null;
+  lng?: number | null;
+  onMove?: (lat: number, lng: number) => void;
+  trail?: [number, number][];
+  height?: number;
+}
+
 const KASHMIR_CENTER: [number, number] = [34.0, 74.8];
+
+interface GeocodingResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
   const id = useRef(`map-${Math.random().toString(36).slice(2)}`);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const trailRef = useRef<L.Polyline | null>(null);
-  const [terrain3d, setTerrain3d] = useState(false);
+  const hillRef = useRef<L.TileLayer | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const hasLocation = lat != null && lng != null;
+
+  const [terrain3d, setTerrain3d] = useState(false);
+  const [zoom, setZoom] = useState(8);
+  const [coordDisplay, setCoordDisplay] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+
+  const handleZoom = useCallback(() => {
+    setZoom(mapRef.current?.getZoom() ?? 8);
+  }, []);
+
+  const handleMapClick = useCallback((e: L.LeafletMouseEvent) => {
+    if (!onMove) return;
+    onMove(e.latlng.lat, e.latlng.lng);
+  }, [onMove]);
 
   useEffect(() => {
     if (mapRef.current) return;
@@ -49,23 +71,48 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
       attribution: '© OpenStreetMap',
     }).addTo(map);
 
-    // Hillshading overlay for pseudo-3D terrain
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map);
+
+    map.on('zoomend', handleZoom);
+    map.on('click', handleMapClick);
+    map.on('mousemove', (e: L.LeafletMouseEvent) => {
+      setCoordDisplay(`${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+    });
+
+    mapRef.current = map;
+    setZoom(map.getZoom());
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.off('click', handleMapClick);
+    map.on('click', handleMapClick);
+  }, [handleMapClick]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (hillRef.current) {
+      map.removeLayer(hillRef.current);
+      hillRef.current = null;
+    }
+
     if (terrain3d) {
-      L.tileLayer('https://tiles.openseamap.org/hillshading/{z}/{x}/{y}.png', {
+      hillRef.current = L.tileLayer('https://tiles.openseamap.org/hillshading/{z}/{x}/{y}.png', {
         maxZoom: 15,
         opacity: 0.4,
       }).addTo(map);
     }
+  }, [terrain3d]);
 
-    // Zoom controls
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    mapRef.current = map;
-
-    return () => { map.remove(); mapRef.current = null; };
-  }, []);
-
-  // Marker
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -76,21 +123,18 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
     }
 
     const pos: [number, number] = hasLocation ? [lat!, lng!] : KASHMIR_CENTER;
-    const marker = L.marker(pos, {
-      draggable: !!onMove,
-    }).addTo(map);
+    const m = L.marker(pos, { draggable: !!onMove }).addTo(map);
 
     if (onMove) {
-      marker.on('dragend', () => {
-        const p = marker.getLatLng();
+      m.on('dragend', () => {
+        const p = m.getLatLng();
         onMove(p.lat, p.lng);
       });
     }
 
-    markerRef.current = marker;
+    markerRef.current = m;
   }, [lat, lng, onMove]);
 
-  // Trail
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -111,28 +155,132 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
     }
   }, [trail]);
 
+  const handleSearchInput = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+
+    if (!value || value.length < 3) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    searchTimer.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=in`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data: GeocodingResult[] = await res.json();
+        setSearchResults(data);
+        setShowResults(true);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+  };
+
+  const selectResult = (r: GeocodingResult) => {
+    const slat = parseFloat(r.lat);
+    const slng = parseFloat(r.lon);
+    setSearchQuery(r.display_name.split(',')[0]);
+    setShowResults(false);
+
+    if (onMove) onMove(slat, slng);
+    mapRef.current?.flyTo([slat, slng], 14);
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggleFullscreen = () => {
+    setFullscreen((v) => !v);
+    setTimeout(() => mapRef.current?.invalidateSize(), 150);
+  };
+
   return (
-    <div className="relative">
+    <div className={`relative ${fullscreen ? 'fixed inset-0 z-[9999] bg-white p-4' : ''}`}>
+      <div ref={searchRef} className="absolute top-3 left-3 z-[1000] w-[280px]">
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearchInput(e.target.value)}
+            placeholder="Search places…"
+            className="w-full input text-xs h-8 pl-7"
+          />
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-3 pointer-events-none">🔍</span>
+          {searching && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-3 animate-pulse">…</span>
+          )}
+          {showResults && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-line rounded-card shadow-md max-h-[220px] overflow-y-auto z-50">
+              {searchResults.map((r) => (
+                <button
+                  key={r.place_id}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-pashmina/40 border-b border-line last:border-0 transition"
+                  onClick={() => selectResult(r)}
+                >
+                  <span className="block truncate">{r.display_name}</span>
+                  <span className="text-[9px] text-ink-3 mt-0.5 block font-mono">
+                    {r.lat.slice(0, 7)}, {r.lon.slice(0, 7)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div
         id={id.current}
-        style={{ height, width: '100%' }}
-        className="rounded-btn border border-line overflow-hidden"
+        style={{ height: fullscreen ? 'calc(100vh - 32px)' : height, width: '100%' }}
+        className={`rounded-btn border border-line overflow-hidden ${onMove ? 'cursor-crosshair' : ''}`}
       />
-      {!hasLocation && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-[999] pointer-events-none">
-          <span className="text-sm text-ink-2 font-quote italic">Save to enable map</span>
+
+      <div className="absolute bottom-3 left-3 z-[1000] flex gap-1.5">
+        <div className="bg-white/90 backdrop-blur text-[10px] font-mono text-ink-2 px-2 py-1 rounded border border-line/50 shadow-sm">
+          {coordDisplay || (hasLocation ? `${lat!.toFixed(4)}, ${lng!.toFixed(4)}` : '—')}
         </div>
-      )}
-      <div className="absolute top-2 right-2 z-[1000] flex gap-1">
+        <div className="bg-white/90 backdrop-blur text-[10px] font-mono text-ink-3 px-2 py-1 rounded border border-line/50 shadow-sm">
+          Z{zoom}
+        </div>
+      </div>
+
+      <div className="absolute top-3 right-3 z-[1000] flex gap-1">
         <button
           className={`text-xs px-2 py-1 rounded font-medium border transition ${
-            terrain3d ? 'bg-dal text-white border-dal' : 'bg-white text-ink-2 border-line'
+            terrain3d ? 'bg-dal text-white border-dal' : 'bg-white/90 backdrop-blur text-ink-2 border-line/50 hover:bg-white'
           }`}
           onClick={() => setTerrain3d((v) => !v)}
+          title={terrain3d ? 'Hide terrain' : 'Show terrain'}
         >
           3D
         </button>
+        <button
+          className="text-xs px-2 py-1 rounded font-medium border bg-white/90 backdrop-blur text-ink-2 border-line/50 hover:bg-white transition leading-none"
+          onClick={toggleFullscreen}
+          title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {fullscreen ? '✕' : '⛶'}
+        </button>
       </div>
+
+      {!hasLocation && !onMove && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-[999] pointer-events-none rounded-btn">
+          <span className="text-sm text-ink-2 font-quote italic">No location set</span>
+        </div>
+      )}
     </div>
   );
 }

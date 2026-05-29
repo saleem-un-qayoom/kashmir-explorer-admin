@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
+import { Input, Textarea, Select, Checkbox } from '@/components/FormControls';
 import { dishes, festivals, crafts, etiquette, type Dish, type Festival, type Craft, type EtiquetteTip } from '@/lib/api';
 
 const TABS = [
@@ -11,6 +12,18 @@ const TABS = [
   { key: 'festivals', label: 'Festivals', queryKey: ['festivals'], useList: () => useQuery({ queryKey: ['festivals'], queryFn: festivals.list }), columns: ['Name', 'Month', 'Duration', 'Region'] },
   { key: 'crafts', label: 'Crafts', queryKey: ['crafts'], useList: () => useQuery({ queryKey: ['crafts'], queryFn: crafts.list }), columns: ['Name', 'Origin', 'Price'] },
   { key: 'etiquette', label: 'Etiquette', queryKey: ['etiquette'], useList: () => useQuery({ queryKey: ['etiquette'], queryFn: etiquette.list }), columns: ['Category', 'Title'] },
+];
+
+const MONTH_OPTIONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => ({
+  value: String(i + 1),
+  label: m,
+}));
+
+const ETIQUETTE_CATEGORY_OPTIONS = [
+  { value: 'mosque', label: 'Mosque' },
+  { value: 'wazwan', label: 'Wazwan' },
+  { value: 'street', label: 'Street' },
+  { value: 'dress', label: 'Dress' },
 ];
 
 export default function CulturalPage() {
@@ -103,8 +116,6 @@ export default function CulturalPage() {
   );
 }
 
-const ETIQUETTE_CATS = ['mosque', 'wazwan', 'street', 'dress'] as const;
-
 function CulturalModal({ tab, qc, initial, onClose }: { tab: string; qc: ReturnType<typeof useQueryClient>; initial: any; onClose: () => void }) {
   const [form, setForm] = useState<any>(initial ?? {});
   const save = useMutation({
@@ -125,54 +136,52 @@ function CulturalModal({ tab, qc, initial, onClose }: { tab: string; qc: ReturnT
           {tab === 'food' && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name (Urdu)</label><input className="input" dir="rtl" value={form.name_urdu ?? ''} onChange={(e) => setForm({ ...form, name_urdu: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><Input value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name (Urdu)</label><Input dir="rtl" value={form.name_urdu ?? ''} onChange={(e) => setForm({ ...form, name_urdu: e.target.value })} /></div>
               </div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Name (Kashmiri)</label><input className="input" value={form.name_kashmiri ?? ''} onChange={(e) => setForm({ ...form, name_kashmiri: e.target.value })} /></div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><textarea className="input min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={form.vegetarian ?? false} onChange={(e) => setForm({ ...form, vegetarian: e.target.checked })} className="accent-dal w-4 h-4" /><span className="text-sm">Vegetarian</span></label>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Name (Kashmiri)</label><Input value={form.name_kashmiri ?? ''} onChange={(e) => setForm({ ...form, name_kashmiri: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><Textarea className="min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <Checkbox label="Vegetarian" checked={form.vegetarian ?? false} onChange={(v) => setForm({ ...form, vegetarian: v })} />
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Where to try</label><input className="input" value={form.where_to_try ?? ''} onChange={(e) => setForm({ ...form, where_to_try: e.target.value })} /></div>
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Price range</label><input className="input" value={form.price_range ?? ''} onChange={(e) => setForm({ ...form, price_range: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Where to try</label><Input value={form.where_to_try ?? ''} onChange={(e) => setForm({ ...form, where_to_try: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Price range</label><Input value={form.price_range ?? ''} onChange={(e) => setForm({ ...form, price_range: e.target.value })} /></div>
               </div>
             </>
           )}
           {tab === 'festivals' && (
             <>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><Input value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Month</label>
-                  <select className="input" value={form.month ?? 1} onChange={(e) => setForm({ ...form, month: parseInt(e.target.value) })}>
-                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                  </select>
+                <div>
+                  <label className="block text-xs font-medium text-ink-2 mb-1">Month</label>
+                  <Select options={MONTH_OPTIONS} value={String(form.month ?? 1)} onChange={(v) => setForm({ ...form, month: parseInt(v) })} />
                 </div>
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Duration</label><input className="input" value={form.duration ?? ''} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Region</label><input className="input" value={form.region ?? ''} onChange={(e) => setForm({ ...form, region: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Duration</label><Input value={form.duration ?? ''} onChange={(e) => setForm({ ...form, duration: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Region</label><Input value={form.region ?? ''} onChange={(e) => setForm({ ...form, region: e.target.value })} /></div>
               </div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><textarea className="input min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><Textarea className="min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </>
           )}
           {tab === 'crafts' && (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><input className="input" value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Origin</label><input className="input" value={form.origin ?? ''} onChange={(e) => setForm({ ...form, origin: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Name</label><Input value={form.name ?? ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Origin</label><Input value={form.origin ?? ''} onChange={(e) => setForm({ ...form, origin: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-ink-2 mb-1">Price</label><input className="input" value={form.price ?? ''} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
+                <div><label className="block text-xs font-medium text-ink-2 mb-1">Price</label><Input value={form.price ?? ''} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
               </div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><textarea className="input min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Description</label><Textarea className="min-h-[60px]" value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
             </>
           )}
           {tab === 'etiquette' && (
             <>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Category</label>
-                <select className="input" value={form.category ?? 'mosque'} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  {ETIQUETTE_CATS.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
-                </select>
+              <div>
+                <label className="block text-xs font-medium text-ink-2 mb-1">Category</label>
+                <Select options={ETIQUETTE_CATEGORY_OPTIONS} value={form.category ?? 'mosque'} onChange={(v) => setForm({ ...form, category: v })} />
               </div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Title</label><input className="input" value={form.title ?? ''} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-              <div><label className="block text-xs font-medium text-ink-2 mb-1">Body</label><textarea className="input min-h-[80px]" value={form.body ?? ''} onChange={(e) => setForm({ ...form, body: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Title</label><Input value={form.title ?? ''} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
+              <div><label className="block text-xs font-medium text-ink-2 mb-1">Body</label><Textarea className="min-h-[80px]" value={form.body ?? ''} onChange={(e) => setForm({ ...form, body: e.target.value })} /></div>
             </>
           )}
         </div>

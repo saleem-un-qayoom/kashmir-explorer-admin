@@ -13,6 +13,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { PageHeader } from '@/components/PageHeader';
+import { Input } from '@/components/FormControls';
 import { destinations, type Destination } from '@/lib/api';
 
 type Tab = 'published' | 'unpublished' | 'deleted' | 'all';
@@ -107,15 +108,10 @@ export default function DestinationsPage() {
 
       <div className="p-8 space-y-4">
         <div className="flex gap-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search destinations…"
-            className="rounded-btn border border-line bg-white px-4 py-2 text-sm focus:outline-none focus:border-dal flex-1 max-w-md"
-          />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search destinations…" className="max-w-md" />
         </div>
 
-        <div className={`card overflow-hidden transition-opacity ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}>
+        <div className={`card overflow-hidden animate-rise transition-opacity ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}>
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((hg) => (
@@ -158,8 +154,8 @@ export default function DestinationsPage() {
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-line last:border-0 hover:bg-pashmina/20 cursor-pointer"
-                  onClick={() => router.push(`/destinations/view/${row.original.id}`)}
+                  className="border-b border-line last:border-0 hover:bg-pashmina/30 cursor-pointer transition-colors duration-150"
+                  onClick={() => router.push(`/destinations/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3">

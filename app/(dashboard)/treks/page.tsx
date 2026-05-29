@@ -13,12 +13,15 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { PageHeader } from '@/components/PageHeader';
+import { Input, Select } from '@/components/FormControls';
 import { treks, type Trek } from '@/lib/api';
 import {
   FeatureChips,
   TRAIL_FEATURES,
   TRAIL_ACTIVITIES,
 } from '@/components/FeatureChips';
+
+const DIFFICULTIES = ['easy', 'moderate', 'hard', 'strenuous'] as const;
 
 export default function TreksPage() {
   const router = useRouter();
@@ -73,32 +76,19 @@ export default function TreksPage() {
       <div className="p-8 space-y-4">
         {/* Search + simple filters */}
         <div className="flex gap-2 flex-wrap items-center">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search treks…"
-            className="input flex-1 max-w-md"
-          />
-          <select
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search treks…" className="max-w-md" />
+          <Select
+            options={[{ value: '', label: 'All difficulties' }, ...DIFFICULTIES.map((d) => ({ value: d, label: d }))]}
             value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-            className="input"
-          >
-            <option value="">All difficulties</option>
-            {['easy', 'moderate', 'hard', 'strenuous'].map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-          <select
+            onChange={setDifficulty}
+            placeholder="All difficulties"
+          />
+          <Select
+            options={[{ value: '', label: 'Any status' }, ...['open', 'closing-soon', 'closed'].map((s) => ({ value: s, label: s.replace('-', ' ') }))]}
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input"
-          >
-            <option value="">Any status</option>
-            {['open', 'closing-soon', 'closed'].map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            onChange={setStatusFilter}
+            placeholder="Any status"
+          />
         </div>
 
         {/* AllTrails-style feature + activity filter chips */}
@@ -269,6 +259,12 @@ function buildColumns(
           onClick={(e) => e.stopPropagation()}
           className="text-right whitespace-nowrap"
         >
+          <button
+            className="btn btn-ghost text-xs"
+            onClick={() => router.push(`/treks/view/${i.row.original.id}`)}
+          >
+            View
+          </button>
           <button
             className="btn btn-ghost text-xs"
             onClick={() => router.push(`/treks/${i.row.original.id}`)}

@@ -25,7 +25,8 @@ import maplibregl, { Map as MLMap, NavigationControl } from 'maplibre-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
-import { Path as PathIcon, MapPin, Cursor, Trash, House, Ruler } from '@phosphor-icons/react';
+import { Path as PathIcon, MapPin, Cursor, Trash, House, Ruler, Mountains, Waveform } from '@phosphor-icons/react';
+import { addContourLayers, setContourVisibility } from '@/lib/contours';
 
 export interface DestinationPin {
   lng: number;
@@ -73,10 +74,20 @@ const dayColor = (d: number) => DAY_COLORS[(d - 1) % DAY_COLORS.length];
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
-/** AWS-hosted, no-key 3D terrain. terrarium-encoded elevation tiles. */
+/** AWS-hosted, no-key 3D terrain. terrarium-encoded elevation tiles (to zoom 15). */
 const DEM_TILES = [
   'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
 ];
+
+/** Esri World Imagery — free, no key. Real aerial so ridges/cliffs read true on the relief. */
+const SATELLITE_TILES = [
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+];
+
+/** First symbol (label) layer id — raster layers go beneath it so labels stay on top. */
+function firstSymbolLayerId(map: MLMap): string | undefined {
+  return map.getStyle().layers?.find((l) => l.type === 'symbol')?.id;
+}
 
 export function Map3DEditor({
   polyline,
@@ -105,6 +116,8 @@ export function Map3DEditor({
   const [activeDay, setActiveDay] = useState<number>(initialPhases[0]?.day ?? 1);
   activeDayRef.current = activeDay;
   const [mode, setMode] = useState<'select' | 'draw_line' | 'draw_point'>('select');
+  const [basemap, setBasemap] = useState<'satellite' | 'map'>('satellite');
+  const [contours, setContours] = useState(false);
   const [stats, setStats] = useState<{ points: number; pins: number; distanceKm: number }>({
     points: 0, pins: 0, distanceKm: 0,
   });
@@ -140,16 +153,38 @@ export function Map3DEditor({
     map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
     map.on('load', () => {
+      const beforeId = firstSymbolLayerId(map);
+
+      // Hide the basemap's own place names + road shields to declutter — only
+      // our trail waypoint labels and contour labels remain.
+      for (const l of map.getStyle().layers ?? []) {
+        if (l.type === 'symbol') map.setLayoutProperty(l.id, 'visibility', 'none');
+      }
+
       // 3D terrain — DEM source + setTerrain
       map.addSource('aws-dem', {
         type: 'raster-dem',
         tiles: DEM_TILES,
         tileSize: 256,
         encoding: 'terrarium',
-        maxzoom: 13,
+        maxzoom: 15,
         attribution: 'Terrain: AWS Open Data',
       });
       map.setTerrain({ source: 'aws-dem', exaggeration: 1.4 });
+
+      // Satellite imagery drape — beneath labels, so the real mountain surface
+      // (rock, snow, couloirs) is visible on the 3D relief for accurate routing.
+      map.addSource('satellite', {
+        type: 'raster',
+        tiles: SATELLITE_TILES,
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+      });
+      map.addLayer(
+        { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-opacity': 1 } },
+        beforeId,
+      );
 
       // Sky atmosphere
       map.setSky({
@@ -161,25 +196,28 @@ export function Map3DEditor({
         'fog-ground-blend':    0.55,
       });
 
-      // Hillshade — visually emphasises ridges/valleys
+      // Hillshade — soft, since the imagery already shows ridges/valleys.
       if (!map.getSource('hillshade-src')) {
         map.addSource('hillshade-src', {
           type: 'raster-dem',
           tiles: DEM_TILES,
           tileSize: 256,
           encoding: 'terrarium',
-          maxzoom: 13,
+          maxzoom: 15,
         });
         map.addLayer({
           id: 'hillshade',
           type: 'hillshade',
           source: 'hillshade-src',
           paint: {
-            'hillshade-exaggeration': 0.5,
+            'hillshade-exaggeration': 0.35,
             'hillshade-shadow-color': '#3D352A',
           },
-        });
+        }, beforeId);
       }
+
+      // Contour lines (hidden until toggled on).
+      addContourLayers(map, beforeId);
 
       /* ─ Drawing tools (programmatic — our custom toolbar drives them) ─ */
       const draw = new MapboxDraw({
@@ -384,6 +422,30 @@ export function Map3DEditor({
     setTimeout(() => map.fire('draw.update' as any), 0);
   }, [phases, polyline, points]);
 
+  /* ── Basemap toggle (satellite imagery ⇆ clean vector map) ── */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getLayer('satellite')) return;
+      map.setLayoutProperty('satellite', 'visibility', basemap === 'satellite' ? 'visible' : 'none');
+      if (map.getLayer('hillshade')) {
+        map.setPaintProperty('hillshade', 'hillshade-exaggeration', basemap === 'satellite' ? 0.35 : 0.6);
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once('idle', apply);
+  }, [basemap]);
+
+  /* ── Contour-line toggle ── */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => setContourVisibility(map, contours);
+    if (map.isStyleLoaded()) apply();
+    else map.once('idle', apply);
+  }, [contours]);
+
   /* ─── Toolbar actions ─── */
 
   const setDrawMode = (m: 'select' | 'draw_line' | 'draw_point') => {
@@ -547,6 +609,21 @@ export function Map3DEditor({
               label="Reset view"
               hint="Re-centre on Kashmir"
             />
+            <div className="w-px bg-line mx-0.5 self-stretch" />
+            <TbBtn
+              active={basemap === 'satellite'}
+              onClick={() => setBasemap((b) => (b === 'satellite' ? 'map' : 'satellite'))}
+              icon={<Mountains size={14} weight="bold" />}
+              label={basemap === 'satellite' ? 'Satellite' : 'Map'}
+              hint="Toggle satellite imagery / vector map drape"
+            />
+            <TbBtn
+              active={contours}
+              onClick={() => setContours((c) => !c)}
+              icon={<Waveform size={14} weight="bold" />}
+              label="Contours"
+              hint="Toggle contour lines with elevation labels"
+            />
           </div>
 
           {/* Stats panel */}
@@ -576,7 +653,7 @@ export function Map3DEditor({
 
       <p className="text-[10px] text-ink-3 font-mono tracking-wider leading-relaxed">
         · DRAG TO PAN · RIGHT-DRAG TO TILT/ROTATE · SCROLL TO ZOOM ·{' '}
-        TILES: <a href="https://openfreemap.org" className="underline">OpenFreeMap</a> ·{' '}
+        IMAGERY: ESRI · MAP: <a href="https://openfreemap.org" className="underline">OpenFreeMap</a> ·{' '}
         DEM: AWS OPEN TERRAIN TILES
       </p>
     </div>
