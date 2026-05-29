@@ -15,22 +15,52 @@ import {
 import { PageHeader } from '@/components/PageHeader';
 import { destinations, type Destination } from '@/lib/api';
 
+type Tab = 'published' | 'unpublished' | 'deleted' | 'all';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'published', label: 'Published' },
+  { key: 'unpublished', label: 'Unpublished' },
+  { key: 'deleted', label: 'Deleted' },
+];
 
 export default function DestinationsPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ['destinations'], queryFn: destinations.list });
+  const [tab, setTab] = useState<Tab>('published');
   const [search, setSearch] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
-  const unpublish = useMutation({
-    mutationFn: (id: string) => destinations.unpublish(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['destinations'] }),
+
+  const isDeletedTab = tab === 'deleted';
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['destinations-admin', tab],
+    queryFn: () => destinations.adminList(tab === 'all' ? undefined : tab),
+    // Keep previous tab's data visible while new tab fetches — no empty flash.
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => destinations.adminRemove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['destinations-admin'] }),
+  });
+
+  const restore = useMutation({
+    mutationFn: (id: string) => destinations.restore(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['destinations-admin'] }),
+  });
+
+  const deletePermanent = useMutation({
+    mutationFn: (id: string) => destinations.deletePermanent(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['destinations-admin'] }),
   });
 
   const columns = useMemo(
-    () => buildColumns(router, unpublish.mutate),
-    [router, unpublish.mutate],
+    () => buildColumns(router, remove.mutate, restore.mutate, deletePermanent.mutate, isDeletedTab),
+    [router, remove.mutate, restore.mutate, deletePermanent.mutate, isDeletedTab],
   );
+
   const table = useReactTable({
     data: data ?? [],
     columns,
@@ -46,13 +76,34 @@ export default function DestinationsPage() {
     <>
       <PageHeader
         title="Destinations"
-        subtitle={`${data?.length ?? 0} published`}
+        subtitle={`${data?.length ?? 0} ${tab === 'deleted' ? 'deleted' : tab === 'all' ? 'total' : tab}`}
         action={
           <button className="btn btn-primary" onClick={() => router.push('/destinations/new')}>
             + New destination
           </button>
         }
       />
+
+      <div className="px-8">
+        <div className="flex gap-1 border-b border-line mb-4">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition -mb-px inline-flex items-center gap-1.5 ${
+                tab === t.key
+                  ? 'border-dal text-dal'
+                  : 'border-transparent text-ink-3 hover:text-ink'
+              }`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+              {tab === t.key && isFetching && (
+                <span className="inline-block w-3 h-3 rounded-full border-2 border-dal border-t-transparent animate-spin" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="p-8 space-y-4">
         <div className="flex gap-2">
@@ -62,15 +113,9 @@ export default function DestinationsPage() {
             placeholder="Search destinations…"
             className="rounded-btn border border-line bg-white px-4 py-2 text-sm focus:outline-none focus:border-dal flex-1 max-w-md"
           />
-          <select className="rounded-btn border border-line bg-white px-3 text-sm">
-            <option>All regions</option>
-            <option>North</option>
-            <option>Central</option>
-            <option>South</option>
-          </select>
         </div>
 
-        <div className="card overflow-hidden">
+        <div className={`card overflow-hidden transition-opacity ${isFetching && !isLoading ? 'opacity-60' : 'opacity-100'}`}>
           <table className="w-full text-sm">
             <thead>
               {table.getHeaderGroups().map((hg) => (
@@ -114,7 +159,7 @@ export default function DestinationsPage() {
                 <tr
                   key={row.id}
                   className="border-b border-line last:border-0 hover:bg-pashmina/20 cursor-pointer"
-                  onClick={() => router.push(`/destinations/${row.original.id}`)}
+                  onClick={() => router.push(`/destinations/view/${row.original.id}`)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3">
@@ -127,14 +172,19 @@ export default function DestinationsPage() {
           </table>
         </div>
       </div>
-
     </>
   );
 }
 
 const ch = createColumnHelper<Destination>();
 
-function buildColumns(router: ReturnType<typeof useRouter>, onUnpublish: (id: string) => void) {
+function buildColumns(
+  router: ReturnType<typeof useRouter>,
+  onDelete: (id: string) => void,
+  onRestore: (id: string) => void,
+  onDeletePermanent: (id: string) => void,
+  isDeletedTab: boolean,
+) {
   return [
     ch.accessor('name', {
       header: 'Name',
@@ -174,7 +224,9 @@ function buildColumns(router: ReturnType<typeof useRouter>, onUnpublish: (id: st
     ch.accessor('is_published', {
       header: 'Status',
       cell: (i) =>
-        i.getValue() ? (
+        i.row.original.is_deleted ? (
+          <span className="badge badge-neutral">Deleted</span>
+        ) : i.getValue() ? (
           <span className="badge badge-success">Published</span>
         ) : (
           <span className="badge badge-neutral">Draft</span>
@@ -185,13 +237,33 @@ function buildColumns(router: ReturnType<typeof useRouter>, onUnpublish: (id: st
       header: '',
       cell: ({ row }) => (
         <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
-          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/destinations/${row.original.id}`)}>
-            Edit
+          <button className="btn btn-ghost text-xs" onClick={() => router.push(`/destinations/view/${row.original.id}`)}>
+            View
           </button>
-          {row.original.is_published && (
-            <button className="btn btn-ghost text-xs text-chinar" onClick={() => onUnpublish(row.original.id)}>
-              Unpublish
-            </button>
+          {isDeletedTab ? (
+            <>
+              <button className="btn btn-ghost text-xs text-dal" onClick={() => onRestore(row.original.id)}>
+                Restore
+              </button>
+              <button
+                className="btn btn-ghost text-xs text-chinar"
+                onClick={() => { if (confirm('Permanently delete this destination? This cannot be undone.')) onDeletePermanent(row.original.id); }}
+              >
+                Delete permanently
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-ghost text-xs" onClick={() => router.push(`/destinations/${row.original.id}`)}>
+                Edit
+              </button>
+              <button
+                className="btn btn-ghost text-xs text-chinar"
+                onClick={() => { if (confirm('Delete this destination?')) onDelete(row.original.id); }}
+              >
+                Delete
+              </button>
+            </>
           )}
         </div>
       ),

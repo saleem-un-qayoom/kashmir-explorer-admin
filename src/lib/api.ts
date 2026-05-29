@@ -151,10 +151,27 @@ export interface Destination {
   };
   is_published?: boolean;
   is_featured?: boolean;
+  is_deleted?: boolean;
 }
 
-export const destinations = crud<Destination>('destinations') as CrudOps<Destination> & { unpublish: (id: string) => Promise<void> };
+type ExtendedDestinations = CrudOps<Destination> & {
+  adminList: (status?: string) => Promise<Destination[]>;
+  adminGet: (id: string) => Promise<Destination>;
+  adminRemove: (id: string) => Promise<void>;
+  unpublish: (id: string) => Promise<void>;
+  restore: (id: string) => Promise<void>;
+  deletePermanent: (id: string) => Promise<void>;
+};
+export const destinations = crud<Destination>('destinations') as ExtendedDestinations;
 destinations.unpublish = (id: string) => apiDelete(`admin/destinations/${id}`);
+destinations.adminList = (status?: string) => {
+  const qs = status ? `?status=${status}` : '';
+  return apiGet<Destination[]>(`admin/destinations${qs}`);
+};
+destinations.adminGet = (id: string) => apiGet<Destination>(`admin/destinations/${id}`);
+destinations.adminRemove = (id: string) => apiDelete(`admin/destinations/${id}`);
+destinations.restore = (id: string) => apiPost(`admin/destinations/${id}/restore`, {});
+destinations.deletePermanent = (id: string) => apiDelete(`admin/destinations/${id}/permanent`);
 
 // ─── Treks ──────────────────────────────────────────────────
 

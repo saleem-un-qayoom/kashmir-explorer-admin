@@ -4,10 +4,11 @@ import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { destinations, type Destination } from '@/lib/api';
+import { destinations, categories as categoriesApi, type Destination } from '@/lib/api';
 import { ImageUploader } from '@/components/ImageUploader';
 import { MapView } from '@/components/MapView';
-import { FeatureChips, TRAIL_FEATURES } from '@/components/FeatureChips';
+import { TRAIL_FEATURES } from '@/components/FeatureChips';
+import { ToggleGrid } from '@/components/ToggleGrid';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const REGIONS = ['central', 'north', 'south', 'ladakh', 'jammu'];
@@ -21,8 +22,15 @@ export default function DestinationDetail() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['destination', id],
-    queryFn: () => destinations.get(id),
+    queryFn: () => destinations.adminGet(id),
     enabled: !isNew,
+  });
+
+  // Load real categories from the API so chips match the actual DB.
+  const { data: allCats = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoriesApi.list(),
+    staleTime: 5 * 60_000,
   });
 
   const [form, setForm] = useState<Partial<Destination>>({
@@ -39,11 +47,15 @@ export default function DestinationDetail() {
 
   const save = useMutation({
     mutationFn: async (): Promise<{ id?: string; updated?: string }> => {
-      if (isNew) return destinations.create(form);
-      return destinations.update(id, form);
+      const payload: any = { ...form };
+      if (!payload.name?.trim()) throw new Error('Destination name is required.');
+      if (!payload.slug?.trim()) payload.slug = slugify(payload.name);
+      if (isNew) return destinations.create(payload);
+      return destinations.update(id, payload);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['destinations'] });
+      qc.invalidateQueries({ queryKey: ['destinations-admin'] });
+      qc.invalidateQueries({ queryKey: ['destination', id] });
       router.push('/destinations');
     },
   });
@@ -100,13 +112,16 @@ export default function DestinationDetail() {
             <Field label="Name" required>
               <input className="input" value={form.name ?? ''} onChange={(e) => set('name', e.target.value)} />
             </Field>
-            <Field label="Slug" required>
+            <Field label="Slug">
               <input
                 className="input font-mono text-sm"
                 value={form.slug ?? ''}
                 onChange={(e) => set('slug', e.target.value)}
-                placeholder="dal-lake"
+                placeholder={form.name ? slugify(form.name) : 'auto-generated from name'}
               />
+              <p className="text-[10px] text-ink-3 mt-1 tracking-wide">
+                Leave blank to auto-generate from the name. Used in the mobile app URL.
+              </p>
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Name (Urdu)">
@@ -293,61 +308,47 @@ export default function DestinationDetail() {
           </Section>
 
           <Section title="Categories">
-            <div className="flex flex-wrap gap-2">
-              {['popular', 'adventure', 'nature', 'cultural', 'spiritual', 'hidden-gems'].map((cat) => {
-                const active = form.categories?.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                      active
-                        ? 'bg-saffron text-white border-saffron'
-                        : 'bg-white text-ink-2 border-line hover:border-saffron/50'
-                    }`}
-                    onClick={() => {
-                      const cats = form.categories ?? [];
-                      set('categories', active ? cats.filter((x) => x !== cat) : [...cats, cat]);
-                    }}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
+            {allCats.length === 0 ? (
+              <p className="text-xs text-ink-3 italic">Loading…</p>
+            ) : (
+              <ToggleGrid
+                value={(form.categories ?? []).filter(Boolean)}
+                options={allCats.map((c) => ({ id: c.slug, label: c.name, color: c.color }))}
+                onChange={(v) => set('categories', v)}
+              />
+            )}
           </Section>
 
           <Section title="Activities">
-            {['trekking', 'sightseeing', 'boating', 'skiing', 'bird-watching', 'camping', 'photography', 'fishing', 'heritage-walk', 'river-rafting', 'gondola', 'shopping'].map((act) => {
-              const active = form.activities?.includes(act);
-              return (
-                <button
-                  key={act}
-                  type="button"
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition mr-1.5 mb-1.5 ${
-                    active
-                      ? 'bg-dal text-white border-dal'
-                      : 'bg-white text-ink-2 border-line hover:border-dal/50'
-                  }`}
-                  onClick={() => {
-                    const acts = form.activities ?? [];
-                    set('activities', active ? acts.filter((x) => x !== act) : [...acts, act].sort());
-                  }}
-                >
-                  {act.replace(/-/g, ' ')}
-                </button>
-              );
-            })}
+            <ToggleGrid
+              value={(form.activities ?? []).filter(Boolean)}
+              options={[
+                { id: 'trekking',       label: 'Trekking',       color: '#2D6A4F' },
+                { id: 'sightseeing',    label: 'Sightseeing',    color: '#2A5266' },
+                { id: 'boating',        label: 'Boating',        color: '#4A8FB5' },
+                { id: 'skiing',         label: 'Skiing',         color: '#EDF2F5' },
+                { id: 'bird-watching',  label: 'Bird watching',  color: '#2D6A4F' },
+                { id: 'camping',        label: 'Camping',        color: '#8B4513' },
+                { id: 'photography',    label: 'Photography',    color: '#C9A227' },
+                { id: 'fishing',        label: 'Fishing',        color: '#4A8FB5' },
+                { id: 'heritage-walk',  label: 'Heritage walk',  color: '#C72D3D' },
+                { id: 'river-rafting',  label: 'River rafting',  color: '#1F4788' },
+                { id: 'gondola',        label: 'Gondola',        color: '#2A5266' },
+                { id: 'shopping',       label: 'Shopping',       color: '#D97444' },
+              ]}
+              onChange={(v) => set('activities', v)}
+            />
           </Section>
 
           <Section title="Trail features">
-            <FeatureChips
-              value={(form as any).features ?? []}
-              options={TRAIL_FEATURES}
+            <ToggleGrid
+              value={((form as any).features ?? []).filter(Boolean)}
+              options={TRAIL_FEATURES.map((f) => ({ id: f.id, label: f.label, color: undefined }))}
               onChange={(v) => set('features' as any, v as any)}
+              cols={3}
             />
-            <p className="text-[11px] text-ink-3 mt-2">
-              Powers the AllTrails-style filter cloud on the mobile Explore screen.
+            <p className="text-[11px] text-ink-3 mt-3">
+              Powers the AllTrails-style filter on the mobile Explore screen.
             </p>
           </Section>
 
@@ -441,6 +442,11 @@ export default function DestinationDetail() {
       </div>
     </>
   );
+}
+
+function slugify(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

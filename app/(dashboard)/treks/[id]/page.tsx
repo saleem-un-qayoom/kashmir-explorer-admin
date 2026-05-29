@@ -14,11 +14,11 @@ import type { TrailSection } from '@/lib/api';
 import { WaypointEditor, type Waypoint } from '@/components/WaypointEditor';
 import { GearListEditor, type GearItem } from '@/components/GearListEditor';
 import {
-  FeatureChips,
   TRAIL_FEATURES,
   TRAIL_ACTIVITIES,
   ROUTE_TYPES,
 } from '@/components/FeatureChips';
+import { ToggleGrid } from '@/components/ToggleGrid';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DIFFICULTIES = ['easy', 'moderate', 'hard', 'strenuous'] as const;
@@ -376,17 +376,19 @@ export default function TrekDetail() {
 
           <Section title="Discovery · features & activities">
             <Field label="Trail features">
-              <FeatureChips
-                value={form.features ?? []}
-                options={TRAIL_FEATURES}
+              <ToggleGrid
+                value={(form.features ?? []).filter(Boolean)}
+                options={TRAIL_FEATURES.map((f) => ({ id: f.id, label: f.label }))}
                 onChange={(v) => set('features' as any, v as any)}
+                cols={3}
               />
             </Field>
             <Field label="Activities">
-              <FeatureChips
-                value={form.activities ?? []}
-                options={TRAIL_ACTIVITIES}
+              <ToggleGrid
+                value={(form.activities ?? []).filter(Boolean)}
+                options={TRAIL_ACTIVITIES.map((a) => ({ id: a.id, label: a.label }))}
                 onChange={(v) => set('activities' as any, v as any)}
+                cols={3}
               />
             </Field>
             <div className="grid grid-cols-2 gap-4">
