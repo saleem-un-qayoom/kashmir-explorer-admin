@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { auth } from '@/lib/auth';
 
 export default function LoginPage() {
@@ -11,6 +11,14 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [expired, setExpired] = useState(false);
+  const [next, setNext] = useState('/');
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setExpired(p.get('session') === 'expired');
+    setNext(p.get('next') || '/');
+  }, []);
 
   const start = async () => {
     setLoading(true);
@@ -30,7 +38,7 @@ export default function LoginPage() {
     setErr(null);
     try {
       await auth.verifyPhone(phone, code);
-      router.push('/');
+      router.push(next.startsWith('/') ? next : '/');
     } catch (e: any) {
       setErr(e.message ?? 'Invalid code.');
     } finally {
@@ -48,6 +56,12 @@ export default function LoginPage() {
             <div className="font-serif italic text-lg leading-none text-kong-deep mt-0.5">Explorer · admin</div>
           </div>
         </div>
+
+        {expired && (
+          <div className="mb-4 rounded-md border border-chinar/30 bg-chinar/10 px-3 py-2 text-sm text-chinar">
+            Your session expired. Please sign in again to continue.
+          </div>
+        )}
 
         {step === 'phone' && (
           <>

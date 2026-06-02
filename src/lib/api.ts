@@ -46,6 +46,24 @@ async function onError(error: any) {
   const start = timings.get(error?.request);
   if (start) logApi(error?.request?.method, error?.request?.url, error?.response?.status ?? 0, Math.round(performance.now() - start), error?.message);
 
+  // 401 = the access token is missing/expired/invalid. The AuthGuard only
+  // checks token *presence*, so a stale token lets the UI load but every
+  // write fails here. Clear it and bounce to /login so the user re-auths
+  // instead of dead-ending on "401 Unauthorized".
+  const status = error?.response?.status;
+  if (status === 401 && typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('kashmir-admin-token');
+      localStorage.removeItem('kashmir-admin-user');
+    } catch { /* ignore */ }
+    if (window.location.pathname !== '/login') {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.assign(`/login?session=expired&next=${next}`);
+    }
+    error.message = 'Your admin session expired — please sign in again.';
+    return error;
+  }
+
   // Surface the API's envelope error message instead of ky's generic
   // "Request failed with status code 400". The Go backend always returns
   // { error: "…", code: "…" } on 4xx/5xx.
