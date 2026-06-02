@@ -24,6 +24,7 @@ const TOILET_OPTIONS = [
   { value: '', label: 'Unknown' },
   { value: 'clean', label: 'Clean' },
   { value: 'basic', label: 'Basic' },
+  { value: 'paid', label: 'Paid' },
   { value: 'none', label: 'None' },
 ];
 
@@ -352,7 +353,7 @@ export default function DestinationDetail() {
           </Section>
 
           <Section title="Network Coverage">
-            {(['jio', 'airtel', 'bsnl'] as const).map((op) => (
+            {(['jio', 'airtel', 'bsnl', 'vi'] as const).map((op) => (
               <div key={op} className="flex items-center gap-3">
                 <span className="text-sm font-medium w-16 uppercase">{op}</span>
                 <div className="flex-1">
