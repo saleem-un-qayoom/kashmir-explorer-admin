@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev --port 3600",
     "build": "next build",
@@ -24,7 +27,7 @@
     "maplibre-gl": "^5.24.0",
     "next": "^15.0.0",
     "react": "19.2.6",
-    "react-dom": "^19.2.6",
+    "react-dom": "19.2.6",
     "react-select": "^5.10.2"
   },
   "devDependencies": {

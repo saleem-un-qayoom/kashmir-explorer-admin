@@ -1,0 +1,3 @@
+[submodule "packages/design-tokens"]
+	path = packages/design-tokens
+	url = https://github.com/saleem-un-qayoom/kashmir-design-tokens.git

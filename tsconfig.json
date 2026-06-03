@@ -24,10 +24,10 @@
         "./src/*"
       ],
       "@kashmir/design-tokens": [
-        "../../packages/design-tokens/src"
+        "./packages/design-tokens/src"
       ],
       "@kashmir/design-tokens/*": [
-        "../../packages/design-tokens/src/*"
+        "./packages/design-tokens/src/*"
       ]
     },
     "plugins": [
