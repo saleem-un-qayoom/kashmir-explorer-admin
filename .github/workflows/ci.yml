@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  typecheck-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # @kashmir/design-tokens is a git submodule
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: install
+        run: bun install --frozen-lockfile
+
+      - name: typecheck
+        run: bunx tsc --noEmit
+
+      - name: build
+        run: bun run build
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:8080/v1
