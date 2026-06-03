@@ -3,7 +3,10 @@
  */
 import ky from 'ky';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8080/v1';
+// The browser talks to the same-origin BFF proxy (app/api/be/[...path]), which
+// reads the httpOnly auth cookie and forwards to the real API with a Bearer
+// token. The actual API base is server-only (in the proxy), never shipped here.
+const BFF_BASE = typeof window !== 'undefined' ? `${window.location.origin}/api/be` : '/api/be';
 
 const timings = new WeakMap<Request, number>();
 
@@ -32,8 +35,8 @@ function logApi(method: string, url: string, status: number, ms: number, err?: s
 }
 
 function onBefore({ request }: { request: Request }) {
-  const token = localStorage.getItem('kashmir-admin-token');
-  if (token) request.headers.set('Authorization', `Bearer ${token}`);
+  // Auth rides the httpOnly cookie (sent automatically, same-origin) and is
+  // attached by the BFF proxy server-side — nothing to inject here.
   timings.set(request, performance.now());
 }
 
@@ -53,7 +56,8 @@ async function onError(error: any) {
   const status = error?.response?.status;
   if (status === 401 && typeof window !== 'undefined') {
     try {
-      localStorage.removeItem('kashmir-admin-token');
+      // Token is an httpOnly cookie (server-managed); just drop the cached user
+      // so the AuthGuard treats us as signed out.
       localStorage.removeItem('kashmir-admin-user');
     } catch { /* ignore */ }
     if (window.location.pathname !== '/login') {
@@ -83,7 +87,7 @@ async function onError(error: any) {
 }
 
 export const api = ky.create({
-  prefix: API_BASE,
+  prefix: BFF_BASE,
   timeout: 15_000,
   retry: 1,
   hooks: {

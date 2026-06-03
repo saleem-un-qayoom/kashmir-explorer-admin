@@ -1,10 +1,14 @@
 /**
- * Admin auth — phone OTP, persisted token, role gate.
+ * Admin auth — phone OTP via the same-origin BFF.
+ *
+ * The access token is held in an httpOnly cookie set by /api/session (the
+ * client never sees it). Only a non-secret user object ({id, role}) is cached
+ * in localStorage so the UI can role-gate; the real gate is the cookie that the
+ * BFF proxy attaches to every API call.
  */
 
 import { api } from './api';
 
-const TOKEN_KEY = 'kashmir-admin-token';
 const USER_KEY = 'kashmir-admin-user';
 
 export interface AdminUser {
@@ -15,7 +19,7 @@ export interface AdminUser {
 export const auth = {
   isAuthenticated(): boolean {
     if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem(TOKEN_KEY);
+    return !!localStorage.getItem(USER_KEY);
   },
 
   currentUser(): AdminUser | null {
@@ -30,23 +34,33 @@ export const auth = {
   },
 
   async startPhone(phone: string): Promise<void> {
+    // No auth needed; routed through the BFF proxy to the API.
     await api.post('auth/phone/start', { json: { phone } });
   },
 
   async verifyPhone(phone: string, code: string): Promise<AdminUser> {
-    const res = (await api.post('auth/phone/verify', { json: { phone, code } }).json()) as { data: any };
-    const user: AdminUser = res.data?.user;
-    if (user.role !== 'admin') {
-      throw new Error('This account does not have admin access.');
+    // /api/session verifies the OTP, enforces the admin role, and sets the
+    // httpOnly token cookie. It returns only the non-secret user object.
+    const res = await fetch('/api/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ phone, code }),
+    });
+    const json = (await res.json().catch(() => null)) as { user?: AdminUser; error?: string } | null;
+    if (!res.ok || !json?.user) {
+      throw new Error(json?.error ?? 'Verification failed.');
     }
-    localStorage.setItem(TOKEN_KEY, res.data.access_token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    return user;
+    localStorage.setItem(USER_KEY, JSON.stringify(json.user));
+    return json.user;
   },
 
-  signOut() {
-    localStorage.removeItem(TOKEN_KEY);
+  async signOut(): Promise<void> {
+    try {
+      await fetch('/api/session', { method: 'DELETE' });
+    } catch {
+      /* clear locally regardless */
+    }
     localStorage.removeItem(USER_KEY);
-    window.location.assign('/login');
+    if (typeof window !== 'undefined') window.location.assign('/login');
   },
 };
