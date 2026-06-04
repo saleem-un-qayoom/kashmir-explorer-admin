@@ -10,15 +10,5 @@
     "./motifs": "./src/motifs/index.ts",
     "./type": "./src/type.ts",
     "./seasons": "./src/seasons.ts"
-  },
-  "peerDependencies": {
-    "react": ">=18 <20",
-    "react-native": "*",
-    "react-native-reanimated": ">=3 <5",
-    "react-native-svg": ">=15 <17"
-  },
-  "devDependencies": {
-    "@types/react": "~19.2.15",
-    "typescript": "~6.0.3"
   }
 }
