@@ -481,3 +481,20 @@ export interface TrackRecording {
 export const tracks = {
   list: () => apiGet<TrackRecording[]>('admin/tracks'),
 };
+
+/** Reviews — user-generated ratings + reviews for destinations/treks (V3) */
+export interface AdminReview {
+  id: string;
+  rating: number;
+  body?: string;
+  photos?: string[];
+  author: string;
+  created_at: string;
+  target_type: 'destination' | 'trek' | string;
+  target_slug: string;
+  hidden: boolean;
+}
+export const reviews = {
+  list: () => apiGet<AdminReview[]>('admin/reviews'),
+  remove: (id: string) => apiDelete(`admin/reviews/${id}`),
+};

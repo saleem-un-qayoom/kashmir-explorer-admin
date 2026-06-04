@@ -23,6 +23,7 @@ import {
   Images,
   Gear,
   SignOut,
+  Star,
   type Icon as PhIcon,
 } from '@phosphor-icons/react';
 import { auth } from '@/lib/auth';
@@ -50,6 +51,7 @@ const NAV: NavGroup[] = [
       { to: '/treks', label: 'Treks', Icon: Tent },
       { to: '/map', label: '3D map', Icon: GlobeHemisphereWest },
       { to: '/trail-reports', label: 'Trail reports', Icon: Path },
+      { to: '/reviews', label: 'Reviews', Icon: Star },
       { to: '/tracks', label: 'Recordings', Icon: PersonSimpleHike },
     ],
   },
