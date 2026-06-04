@@ -1484,6 +1484,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all reviews (admin moderation) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"] & {
+                            data?: components["schemas"]["internal_review.Review"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete any review (admin) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Review ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/roads/status": {
         parameters: {
             query?: never;
@@ -3257,6 +3341,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/destinations/{slug}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List reviews for a destination */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Destination slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"] & {
+                            data?: components["schemas"]["internal_review.Review"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create/update my review for a destination */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Destination slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["internal_review.ReviewInput"];
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/groups": {
         parameters: {
             query?: never;
@@ -3798,6 +3964,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my reviews */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"] & {
+                            data?: components["schemas"]["internal_review.Review"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/subscribe": {
         parameters: {
             query?: never;
@@ -4179,6 +4383,52 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete my review */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Review ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "*/*": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -4922,6 +5172,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/treks/{slug}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List reviews for a trek */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Trek slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"] & {
+                            data?: components["schemas"]["internal_review.Review"][];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create/update my review for a trek */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Trek slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["internal_review.ReviewInput"];
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["github_com_kashmir-explorer_api_pkg_response.Envelope"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/upload/presign": {
         parameters: {
             query?: never;
@@ -5554,6 +5886,23 @@ export interface components {
             trek_slug?: string;
             waypoint_idx?: number;
         };
+        "internal_review.Review": {
+            author?: string;
+            body?: string;
+            created_at?: string;
+            hidden?: boolean;
+            id?: string;
+            photos?: string[];
+            rating?: number;
+            target_slug?: string;
+            /** @description Populated on the "my reviews" + admin lists. */
+            target_type?: string;
+        };
+        "internal_review.ReviewInput": {
+            body?: string;
+            photos?: string[];
+            rating?: number;
+        };
         "internal_search.Result": {
             altitude_m?: number;
             days?: number;
@@ -5815,6 +6164,12 @@ export interface components {
         "internal_advisory.RoadInput": {
             content: {
                 "application/json": components["schemas"]["internal_advisory.RoadInput"];
+            };
+        };
+        /** @description Review */
+        "internal_review.ReviewInput": {
+            content: {
+                "application/json": components["schemas"]["internal_review.ReviewInput"];
             };
         };
     };
