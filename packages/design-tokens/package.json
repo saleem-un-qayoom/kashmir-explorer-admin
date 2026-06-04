@@ -1,0 +1,24 @@
+{
+  "name": "@kashmir/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kashmiri-native design system: palette, type, motifs, seasonal banners.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./motifs": "./src/motifs/index.ts",
+    "./type": "./src/type.ts",
+    "./seasons": "./src/seasons.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18 <20",
+    "react-native": "*",
+    "react-native-reanimated": ">=3 <5",
+    "react-native-svg": ">=15 <17"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.15",
+    "typescript": "~6.0.3"
+  }
+}
