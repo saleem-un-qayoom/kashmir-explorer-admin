@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start --port 3600",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:api": "swagger2openapi openapi.json -o openapi.v3.json && openapi-typescript openapi.v3.json -o src/lib/api.gen.ts"
   },
   "dependencies": {
     "@kashmir/design-tokens": "workspace:*",
@@ -36,7 +37,9 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "openapi-typescript": "^7.13.0",
     "postcss": "^8.5.15",
+    "swagger2openapi": "^7.0.8",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3"
   }
