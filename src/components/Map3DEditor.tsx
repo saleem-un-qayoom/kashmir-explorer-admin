@@ -2,12 +2,24 @@
  * Map3DEditor — free 3D map editor for trails and multi-destination layouts.
  *
  *  • MapLibre GL JS (MIT, no API key)
- *  • OpenFreeMap "liberty" vector basemap
+ *  • OpenFreeMap "liberty" vector basemap (AWS terrain) or
+ *    MapTiler outdoor style + terrain-rgb (Premium — needs key)
  *  • AWS Open Terrain Tiles (terrain-rgb) → real 3D relief
  *  • Sky atmosphere
  *  • mapbox-gl-draw fork (compatible with MapLibre) for line + point
  *    drawing tools. Trails are emitted as a LineString polyline;
  *    destination markers are emitted as Point features.
+ *
+ *  • Optional Cesium World Terrain (Cesium ion asset 1) as a read-only
+ *    preview. The terrain toggle includes a "Cesium World" pill that
+ *    swaps the editable MapLibre canvas for a Cesium globe. Drawing
+ *    tools are hidden in Cesium mode — it's a QA / screenshot surface,
+ *    not an editor.
+ *
+ * Three terrain sources (toolbar toggle):
+ *   • AWS      — MapLibre + AWS terrarium DEM, no key, default
+ *   • Premium  — MapLibre + MapTiler terrain-rgb, needs NEXT_PUBLIC_MAPTILER_KEY
+ *   • Cesium   — Cesium World Terrain, read-only, needs token
  *
  * Both `polyline` (LineString) and `points` (markers) can be controlled.
  * The editor calls `onChange` whenever the user edits either.
@@ -25,8 +37,24 @@ import maplibregl, { Map as MLMap, NavigationControl } from 'maplibre-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
+import dynamic from 'next/dynamic';
 import { Path as PathIcon, MapPin, Cursor, Trash, House, Ruler, Mountains, Waveform } from '@phosphor-icons/react';
 import { addContourLayers, setContourVisibility } from '@/lib/contours';
+import { TERRAIN_SOURCES, getAvailableTerrainSources } from '@/lib/terrainSources';
+
+// Cesium globe — read-only preview. Imported dynamically with ssr:false
+// because Cesium reads `window` at import time.
+const CesiumViewer = dynamic(
+  () => import('./CesiumViewer').then((m) => m.CesiumViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full flex items-center justify-center bg-pashmina text-ink-3 text-xs font-mono">
+        Loading Cesium globe…
+      </div>
+    ),
+  },
+);
 
 export interface DestinationPin {
   lng: number;
@@ -72,13 +100,6 @@ interface Props {
 const DAY_COLORS = ['#E8893A', '#2A5266', '#2D6A4F', '#B23A2E', '#1F4788', '#C9A227'];
 const dayColor = (d: number) => DAY_COLORS[(d - 1) % DAY_COLORS.length];
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
-
-/** AWS-hosted, no-key 3D terrain. terrarium-encoded elevation tiles (to zoom 15). */
-const DEM_TILES = [
-  'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
-];
-
 /** Esri World Imagery — free, no key. Real aerial so ridges/cliffs read true on the relief. */
 const SATELLITE_TILES = [
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -118,9 +139,38 @@ export function Map3DEditor({
   const [mode, setMode] = useState<'select' | 'draw_line' | 'draw_point'>('select');
   const [basemap, setBasemap] = useState<'satellite' | 'map'>('satellite');
   const [contours, setContours] = useState(false);
+  /** Engine selector. Three options:
+   *   'aws'     — MapLibre + AWS terrarium DEM, editable, default
+   *   'premium' — MapLibre + MapTiler terrain-rgb, editable, needs key
+   *   'cesium'  — read-only Cesium World Terrain preview */
+  type Terrain = 'aws' | 'premium' | 'cesium';
+  const [terrain, setTerrain] = useState<Terrain>('aws');
   const [stats, setStats] = useState<{ points: number; pins: number; distanceKm: number }>({
     points: 0, pins: 0, distanceKm: 0,
   });
+
+  // Available terrain sources (filter out ones whose required key is
+  // missing). The toolbar pill uses this so users never see a
+  // "click → setup hint" dead end. The Premium pill is hidden entirely
+  // when NEXT_PUBLIC_MAPTILER_KEY is unset; Cesium always shows (it has
+  // a hardcoded dev fallback token in CesiumViewer).
+  const availableTerrains = getAvailableTerrainSources();
+
+  // Effective terrain: clamps the saved state to the currently-available
+  // sources. If the env var disappears (or page mounts with stale state)
+  // we fall back to 'aws' silently rather than rendering broken.
+  const effectiveTerrain: Terrain = availableTerrains.includes(terrain) ? terrain : 'aws';
+
+  // Resolve the active MapLibre DEM config. Now that the toggle only
+  // shows sources whose keys are set, the effective terrain equals
+  // the user's selection (no fallback path needed).
+  const effectiveLibreTerrain: 'aws' | 'premium' =
+    effectiveTerrain === 'premium' ? 'premium' : 'aws';
+  const demCfg = TERRAIN_SOURCES[effectiveLibreTerrain].dem;
+  const styleUrl =
+    effectiveLibreTerrain === 'premium'
+      ? TERRAIN_SOURCES.premium.premiumBasemap?.styleUrl
+      : 'https://tiles.openfreemap.org/styles/liberty';
 
   // Stable change-handler ref so we can recreate listeners without rebuilding the map.
   const onChangeRef = useRef(onChange);
@@ -132,14 +182,18 @@ export function Map3DEditor({
   // may pass freshly-constructed arrays each render.
   const lastSeedRef = useRef<string>('');
 
-  /* ── Initialise map once ─────────────────────────────── */
+  /* ── Initialise map (re-builds when the engine or terrain source toggles) ── */
 
   useEffect(() => {
     if (!containerRef.current) return;
+    // Skip MapLibre init only in Cesium mode — both 'aws' and 'premium'
+    // are editable MapLibre views.
+    if (terrain === 'cesium') return;
+    if (!styleUrl) return;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: styleUrl,
       center: [center.lng, center.lat],
       zoom,
       pitch: 55,
@@ -161,16 +215,18 @@ export function Map3DEditor({
         if (l.type === 'symbol') map.setLayoutProperty(l.id, 'visibility', 'none');
       }
 
-      // 3D terrain — DEM source + setTerrain
-      map.addSource('aws-dem', {
+      // 3D terrain — DEM source + setTerrain. The DEM source is resolved
+      // by the parent (AWS terrarium for 'aws', MapTiler terrain-rgb for
+      // 'premium'), so the same code path handles both.
+      map.addSource('terrain-dem', {
         type: 'raster-dem',
-        tiles: DEM_TILES,
-        tileSize: 256,
-        encoding: 'terrarium',
-        maxzoom: 15,
-        attribution: 'Terrain: AWS Open Data',
+        tiles: demCfg.tiles,
+        tileSize: demCfg.tileSize,
+        encoding: demCfg.encoding,
+        maxzoom: demCfg.maxzoom,
+        attribution: demCfg.attribution,
       });
-      map.setTerrain({ source: 'aws-dem', exaggeration: 1.4 });
+      map.setTerrain({ source: 'terrain-dem', exaggeration: demCfg.exaggeration });
 
       // Satellite imagery drape — beneath labels, so the real mountain surface
       // (rock, snow, couloirs) is visible on the 3D relief for accurate routing.
@@ -196,19 +252,13 @@ export function Map3DEditor({
         'fog-ground-blend':    0.55,
       });
 
-      // Hillshade — soft, since the imagery already shows ridges/valleys.
+      // Hillshade — reuse the same DEM source; saves a request and keeps
+      // the shading consistent with the relief.
       if (!map.getSource('hillshade-src')) {
-        map.addSource('hillshade-src', {
-          type: 'raster-dem',
-          tiles: DEM_TILES,
-          tileSize: 256,
-          encoding: 'terrarium',
-          maxzoom: 15,
-        });
         map.addLayer({
           id: 'hillshade',
           type: 'hillshade',
-          source: 'hillshade-src',
+          source: 'terrain-dem',
           paint: {
             'hillshade-exaggeration': 0.35,
             'hillshade-shadow-color': '#3D352A',
@@ -375,7 +425,7 @@ export function Map3DEditor({
       drawRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [effectiveLibreTerrain]);
 
   /* ── Re-seed draw store when parent supplies new data (GPX upload, etc.) ── */
   useEffect(() => {
@@ -565,65 +615,122 @@ export function Map3DEditor({
       </div>
 
       <div className="relative rounded-card border border-line overflow-hidden bg-pashmina">
-        <div ref={containerRef} style={{ height, width: '100%' }} />
+        {terrain === 'cesium' ? (
+          <CesiumViewer
+            polyline={polylineSafe.length >= 2 ? polylineSafe : undefined}
+            phases={initialPhases}
+            points={points}
+            center={center}
+            zoom={zoom}
+            basemap={basemap}
+            height={height}
+          />
+        ) : (
+          <div ref={containerRef} style={{ height, width: '100%' }} />
+        )}
 
         {/* Floating toolbar — labelled buttons, not cryptic icons */}
         <div className="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
           <div className="flex gap-1 p-1 bg-white/95 backdrop-blur rounded-btn border border-line shadow-warm pointer-events-auto">
-            <TbBtn
-              active={mode === 'select'}
-              onClick={() => setDrawMode('select')}
-              icon={<Cursor size={14} weight="bold" />}
-              label="Select"
-              hint="Click vertices or pins to move them"
-            />
-            {enableTrail && (
-              <TbBtn
-                active={mode === 'draw_line'}
-                onClick={() => setDrawMode('draw_line')}
-                icon={<PathIcon size={14} weight="bold" />}
-                label="Draw trail"
-                hint="Click along the map · double-click to finish"
-              />
-            )}
-            {enablePoints && (
-              <TbBtn
-                active={mode === 'draw_point'}
-                onClick={() => setDrawMode('draw_point')}
-                icon={<MapPin size={14} weight="bold" />}
-                label="Add waypoint"
-                hint="Click anywhere to drop a pin"
-              />
+            {terrain === 'cesium' ? (
+              <>
+                <TbBtn
+                  active={basemap === 'satellite'}
+                  onClick={() => setBasemap((b) => (b === 'satellite' ? 'map' : 'satellite'))}
+                  icon={<Mountains size={14} weight="bold" />}
+                  label={basemap === 'satellite' ? 'Satellite' : 'Map'}
+                  hint="Toggle Bing Aerial / OSM imagery on the Cesium globe"
+                />
+                <span className="flex items-center px-2.5 py-1.5 text-[10px] font-mono tracking-wider text-ink-3">
+                  READ-ONLY PREVIEW
+                </span>
+              </>
+            ) : (
+              <>
+                <TbBtn
+                  active={mode === 'select'}
+                  onClick={() => setDrawMode('select')}
+                  icon={<Cursor size={14} weight="bold" />}
+                  label="Select"
+                  hint="Click vertices or pins to move them"
+                />
+                {enableTrail && (
+                  <TbBtn
+                    active={mode === 'draw_line'}
+                    onClick={() => setDrawMode('draw_line')}
+                    icon={<PathIcon size={14} weight="bold" />}
+                    label="Draw trail"
+                    hint="Click along the map · double-click to finish"
+                  />
+                )}
+                {enablePoints && (
+                  <TbBtn
+                    active={mode === 'draw_point'}
+                    onClick={() => setDrawMode('draw_point')}
+                    icon={<MapPin size={14} weight="bold" />}
+                    label="Add waypoint"
+                    hint="Click anywhere to drop a pin"
+                  />
+                )}
+                <div className="w-px bg-line mx-0.5 self-stretch" />
+                <TbBtn
+                  onClick={deleteSelected}
+                  icon={<Trash size={14} weight="bold" />}
+                  label="Delete"
+                  hint="Removes the selected vertex / pin"
+                  danger
+                />
+                <TbBtn
+                  onClick={flyHome}
+                  icon={<House size={14} weight="bold" />}
+                  label="Reset view"
+                  hint="Re-centre on Kashmir"
+                />
+                <div className="w-px bg-line mx-0.5 self-stretch" />
+                <TbBtn
+                  active={basemap === 'satellite'}
+                  onClick={() => setBasemap((b) => (b === 'satellite' ? 'map' : 'satellite'))}
+                  icon={<Mountains size={14} weight="bold" />}
+                  label={basemap === 'satellite' ? 'Satellite' : 'Map'}
+                  hint="Toggle satellite imagery / vector map drape"
+                />
+                <TbBtn
+                  active={contours}
+                  onClick={() => setContours((c) => !c)}
+                  icon={<Waveform size={14} weight="bold" />}
+                  label="Contours"
+                  hint="Toggle contour lines with elevation labels"
+                />
+              </>
             )}
             <div className="w-px bg-line mx-0.5 self-stretch" />
-            <TbBtn
-              onClick={deleteSelected}
-              icon={<Trash size={14} weight="bold" />}
-              label="Delete"
-              hint="Removes the selected vertex / pin"
-              danger
-            />
-            <TbBtn
-              onClick={flyHome}
-              icon={<House size={14} weight="bold" />}
-              label="Reset view"
-              hint="Re-centre on Kashmir"
-            />
-            <div className="w-px bg-line mx-0.5 self-stretch" />
-            <TbBtn
-              active={basemap === 'satellite'}
-              onClick={() => setBasemap((b) => (b === 'satellite' ? 'map' : 'satellite'))}
-              icon={<Mountains size={14} weight="bold" />}
-              label={basemap === 'satellite' ? 'Satellite' : 'Map'}
-              hint="Toggle satellite imagery / vector map drape"
-            />
-            <TbBtn
-              active={contours}
-              onClick={() => setContours((c) => !c)}
-              icon={<Waveform size={14} weight="bold" />}
-              label="Contours"
-              hint="Toggle contour lines with elevation labels"
-            />
+            {/* Terrain pill: shows only sources whose required key is set.
+             *  Premium is hidden entirely when NEXT_PUBLIC_MAPTILER_KEY is
+             *  unset, so the toggle is never "click → setup hint" dead end. */}
+            <div className="flex gap-0.5 p-0.5 bg-pashmina/60 rounded-sm">
+              {availableTerrains.map((t) => {
+                const isActive = effectiveTerrain === t;
+                const isAws = t === 'aws';
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTerrain(t)}
+                    className={`px-2 py-1 text-[10px] font-mono tracking-wider rounded-[3px] transition flex items-center gap-0.5 ${
+                      isActive ? 'bg-dal text-white' : 'text-ink-3 hover:text-ink'
+                    }`}
+                    title={TERRAIN_SOURCES[t].hint}
+                  >
+                    {t === 'aws' ? 'AWS'
+                     : t === 'premium' ? 'PREMIUM'
+                     : 'CESIUM'}
+                    {isAws && !isActive && (
+                      <span className="text-emerald" title="Default — free, no key">●</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Stats panel */}
@@ -639,8 +746,8 @@ export function Map3DEditor({
           </div>
         </div>
 
-        {/* Inline help bar — slides in only when drawing */}
-        {(mode === 'draw_line' || mode === 'draw_point') && (
+        {/* Inline help bar — slides in only when drawing (MapLibre mode only) */}
+        {effectiveTerrain !== 'cesium' && (mode === 'draw_line' || mode === 'draw_point') && (
           <div className="absolute bottom-3 left-3 right-3 mx-auto max-w-md pointer-events-none">
             <div className="px-3 py-2 rounded-btn bg-dal text-white text-xs font-medium shadow-warm text-center">
               {mode === 'draw_line'
@@ -653,8 +760,9 @@ export function Map3DEditor({
 
       <p className="text-[10px] text-ink-3 font-mono tracking-wider leading-relaxed">
         · DRAG TO PAN · RIGHT-DRAG TO TILT/ROTATE · SCROLL TO ZOOM ·{' '}
-        IMAGERY: ESRI · MAP: <a href="https://openfreemap.org" className="underline">OpenFreeMap</a> ·{' '}
-        DEM: AWS OPEN TERRAIN TILES
+        {effectiveTerrain === 'aws' && <>IMAGERY: ESRI · MAP: <a href="https://openfreemap.org" className="underline">OpenFreeMap</a> · DEM: AWS OPEN TERRAIN TILES</>}
+        {effectiveTerrain === 'premium' && <>IMAGERY: ESRI · MAP: MAPTILER OUTDOOR · DEM: MAPTILER TERRAIN-RGB</>}
+        {effectiveTerrain === 'cesium' && <>TERRAIN: CESIUM WORLD TERRAIN (ION ASSET 1) · IMAGERY: BING AERIAL / OSM · READ-ONLY</>}
       </p>
     </div>
   );

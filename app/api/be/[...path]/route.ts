@@ -23,10 +23,12 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[]
   if (token) headers.set('authorization', `Bearer ${token}`);
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+  // Forward the raw bytes (arrayBuffer), not text() — text() corrupts binary
+  // uploads such as image bytes. Works equally for JSON/form bodies.
   const upstream = await fetch(target, {
     method: req.method,
     headers,
-    body: hasBody ? await req.text() : undefined,
+    body: hasBody ? await req.arrayBuffer() : undefined,
     redirect: 'manual',
     cache: 'no-store',
   });

@@ -21,6 +21,8 @@ import {
   MapTrifold,
   ChartLineUp,
   Images,
+  ImageSquare,
+  Palette,
   Gear,
   SignOut,
   Star,
@@ -40,6 +42,7 @@ const NAV: NavGroup[] = [
   {
     heading: 'Places & content',
     items: [
+      { to: '/home-hero', label: 'Home hero', Icon: ImageSquare },
       { to: '/destinations', label: 'Destinations', Icon: MapPin },
       { to: '/cultural', label: 'Cultural', Icon: Sparkle },
       { to: '/photo-spots', label: 'Photo spots', Icon: Camera },
@@ -82,6 +85,8 @@ const NAV: NavGroup[] = [
     items: [
       { to: '/analytics', label: 'Analytics', Icon: ChartLineUp },
       { to: '/media', label: 'Media', Icon: Images },
+      { to: '/theme', label: 'Theme', Icon: Palette },
+      { to: '/map-engine', label: 'Map engine', Icon: GlobeHemisphereWest },
       { to: '/settings', label: 'Settings', Icon: Gear },
     ],
   },

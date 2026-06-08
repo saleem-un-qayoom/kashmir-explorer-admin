@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Section, Field } from '@/components/FormFields';
 import { Input, Textarea, Select, Checkbox } from '@/components/FormControls';
 import { MapView } from '@/components/MapView';
+import { ImageUploader } from '@/components/ImageUploader';
 import { photoSpots, destinations } from '@/lib/api';
 
 const BEST_TIMES = ['sunrise', 'golden-pm', 'blue-hour', 'dawn', 'night'] as const;
@@ -56,7 +57,12 @@ export default function PhotoSpotEdit() {
 
   const save = useMutation({
     mutationFn: () => isNew ? photoSpots.create(form) : photoSpots.update(id, form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['photo-spots'] }); router.push('/photo-spots'); },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['photo-spots'] });
+      // For a brand-new spot, land on its edit page so images can be attached.
+      if (isNew && res?.id) router.replace(`/photo-spots/${res.id}`);
+      else router.push('/photo-spots');
+    },
   });
 
   const destOptions = (dests ?? []).map((d) => ({ value: d.slug, label: d.name }));
@@ -146,18 +152,33 @@ export default function PhotoSpotEdit() {
               </div>
             )}
           </Section>
+
+          <Section title="Photos">
+            {isNew ? (
+              <p className="text-[11px] text-ink-3">
+                Save the spot first — then you can upload photos here.
+              </p>
+            ) : (
+              <ImageUploader entityType="photo_spot" entityId={id} />
+            )}
+          </Section>
         </div>
       </div>
 
-      <div className="px-8 pb-8">
-        <Section title="Map">
+      <div className="pb-8">
+        <div className="card overflow-hidden">
+          <div className="p-6 pb-4">
+            <h3 className="font-heading text-sm tracking-wider text-ink-3">MAP</h3>
+          </div>
           <MapView
             lat={form.lat || null}
             lng={form.lng || null}
             onMove={(lat, lng) => { set('lat', lat as any); set('lng', lng as any); }}
+            name={form.name ?? ''}
+            onNameChange={(name) => set('name', name as any)}
             height={500}
           />
-        </Section>
+        </div>
       </div>
     </>
   );

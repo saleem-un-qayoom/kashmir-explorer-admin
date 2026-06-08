@@ -82,10 +82,13 @@ export default function PhotoSpotView() {
         </div>
       </div>
 
-      <div className="px-8 pb-8">
-        <Section title="Map">
+      <div className="pb-8">
+        <div className="card overflow-hidden">
+          <div className="p-6 pb-4">
+            <h3 className="font-heading text-sm tracking-wider text-ink-3">MAP</h3>
+          </div>
           <MapView lat={d.lat} lng={d.lng} height={450} />
-        </Section>
+        </div>
       </div>
     </>
   );

@@ -3,17 +3,53 @@
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/PageHeader';
 import { Section, Field } from '@/components/FormFields';
 import { Input, Textarea, Select, Checkbox, MultiSelect } from '@/components/FormControls';
-import { destinations, categories as categoriesApi, regions, permits, type Destination } from '@/lib/api';
+import { destinations, categories as categoriesApi, permits, type Destination } from '@/lib/api';
 import { ImageUploader } from '@/components/ImageUploader';
-import { MapView } from '@/components/MapView';
 import { TRAIL_FEATURES } from '@/components/FeatureChips';
 import { ToggleGrid } from '@/components/ToggleGrid';
 
+const MapView = dynamic(
+  () => import('@/components/MapView').then((m) => m.MapView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[500px] w-full rounded-btn border border-line bg-pashmina/30 animate-pulse flex items-center justify-center">
+        <span className="text-xs text-ink-3 font-mono">Loading map…</span>
+      </div>
+    ),
+  },
+);
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SEASON_OPTIONS = ['year-round', 'summer', 'winter', 'spring', 'autumn'].map((s) => ({ value: s, label: s }));
+const DISTRICT_OPTIONS = [
+  'Anantnag',
+  'Bandipora',
+  'Baramulla',
+  'Budgam',
+  'Ganderbal',
+  'Kulgam',
+  'Kupwara',
+  'Pulwama',
+  'Shopian',
+  'Srinagar',
+  'Doda',
+  'Jammu',
+  'Kathua',
+  'Kishtwar',
+  'Poonch',
+  'Rajouri',
+  'Ramban',
+  'Reasi',
+  'Samba',
+  'Udhampur',
+  'Kargil',
+  'Leh',
+].map((d) => ({ value: d, label: d }));
 const COVERAGE_OPTIONS = [
   { value: '', label: 'Auto' },
   { value: 'good', label: 'Good' },
@@ -46,12 +82,6 @@ export default function DestinationDetail() {
     staleTime: 5 * 60_000,
   });
 
-  const { data: allRegions = [] } = useQuery({
-    queryKey: ['regions'],
-    queryFn: () => regions.list(),
-    staleTime: 5 * 60_000,
-  });
-
   const { data: allPermits = [] } = useQuery({
     queryKey: ['permits'],
     queryFn: () => permits.list(),
@@ -78,10 +108,13 @@ export default function DestinationDetail() {
       if (isNew) return destinations.create(payload);
       return destinations.update(id, payload);
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['destinations-admin'] });
       qc.invalidateQueries({ queryKey: ['destination', id] });
-      router.push('/destinations');
+      // For a brand-new destination, land on its edit page so the hero gallery
+      // (image uploader) becomes available to attach photos.
+      if (isNew && res?.id) router.replace(`/destinations/${res.id}`);
+      else router.push('/destinations');
     },
   });
 
@@ -188,61 +221,6 @@ export default function DestinationDetail() {
               />
             </Field>
           </Section>
-
-          <Section title="Location">
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Region">
-                <Select
-                  options={allRegions.map((r) => ({ value: r.slug, label: r.name }))}
-                  value={form.region_slug ?? ''}
-                  onChange={(v) => set('region_slug' as any, v)}
-                  placeholder="Select..."
-                />
-              </Field>
-              <Field label="District">
-                <Input
-                  value={form.district ?? ''}
-                  onChange={(e) => set('district', e.target.value)}
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Latitude">
-                <Input
-                  type="number"
-                  step="0.0001"
-                  className="font-mono"
-                  value={form.lat ?? ''}
-                  onChange={(e) => set('lat', parseFloat(e.target.value) as any)}
-                />
-              </Field>
-              <Field label="Longitude">
-                <Input
-                  type="number"
-                  step="0.0001"
-                  className="font-mono"
-                  value={form.lng ?? ''}
-                  onChange={(e) => set('lng', parseFloat(e.target.value) as any)}
-                />
-              </Field>
-              <Field label="Altitude (m)">
-                <Input
-                  type="number"
-                  className="font-mono"
-                  value={form.altitude_m ?? ''}
-                  onChange={(e) => set('altitude_m', parseInt(e.target.value) as any)}
-                />
-              </Field>
-            </div>
-            <Field label="Distance from Srinagar (km)">
-              <Input
-                type="number"
-                className="font-mono"
-                value={form.distance_from_srinagar_km ?? ''}
-                onChange={(e) => set('distance_from_srinagar_km', parseInt(e.target.value) as any)}
-              />
-            </Field>
-          </Section>
         </div>
 
         {/* ─── Right column ─── */}
@@ -286,21 +264,44 @@ export default function DestinationDetail() {
                 })}
               </div>
             </Field>
-            <Field label="Entry Fee (INR)">
-              <Input
-                type="number"
-                className="font-mono"
-                value={form.entry_fee_inr ?? 0}
-                onChange={(e) => set('entry_fee_inr', parseInt(e.target.value) as any)}
+            <Field label="Entry Fee">
+              <Checkbox
+                label="This place charges an entry fee"
+                checked={form.has_entry_fee ?? false}
+                onChange={(v) => set('has_entry_fee', v as any)}
               />
+              {form.has_entry_fee && (
+                <Input
+                  type="number"
+                  className="font-mono mt-2"
+                  value={form.entry_fee_inr ?? 0}
+                  onChange={(e) => set('entry_fee_inr', parseInt(e.target.value) as any)}
+                  placeholder="Amount in INR"
+                />
+              )}
+              <p className="text-[10px] text-ink-3 mt-1">
+                Leave unchecked for free entry (e.g. Dal Lake) — the mobile app hides the fee entirely.
+              </p>
             </Field>
-            <Field label="Permits">
-              <MultiSelect
-                options={allPermits.map((p) => ({ value: p.slug, label: p.name }))}
-                value={form.permits ?? []}
-                onChange={(v) => set('permits', v as any)}
-                placeholder="Select permits…"
+            <Field label="Permit">
+              <Checkbox
+                label="A permit is required to visit"
+                checked={form.requires_permit ?? false}
+                onChange={(v) => set('requires_permit', v as any)}
               />
+              {form.requires_permit && (
+                <div className="mt-2">
+                  <MultiSelect
+                    options={allPermits.map((p) => ({ value: p.slug, label: p.name }))}
+                    value={form.permits ?? []}
+                    onChange={(v) => set('permits', v as any)}
+                    placeholder="Select permits…"
+                  />
+                </div>
+              )}
+              <p className="text-[10px] text-ink-3 mt-1">
+                Leave unchecked where no permit is needed — the mobile app hides the permit note.
+              </p>
             </Field>
           </Section>
 
@@ -412,15 +413,29 @@ export default function DestinationDetail() {
         </div>
       </div>
 
-      <div className="px-8 pb-8">
-        <Section title="Map">
+      <div className="pb-8">
+        <div className="card overflow-hidden">
+          <div className="p-6 pb-4">
+            <h3 className="font-heading text-sm tracking-wider text-ink-3 mb-4">MAP</h3>
+            <Field label="District">
+              <Select
+                options={DISTRICT_OPTIONS}
+                value={form.district ?? ''}
+                onChange={(v) => set('district', v)}
+                placeholder="Select..."
+                isClearable
+              />
+            </Field>
+          </div>
           <MapView
             lat={form.lat}
             lng={form.lng}
             onMove={(lat, lng) => { set('lat', lat); set('lng', lng); }}
+            name={form.name ?? ''}
+            onNameChange={(name) => set('name', name)}
             height={500}
           />
-        </Section>
+        </div>
       </div>
     </>
   );

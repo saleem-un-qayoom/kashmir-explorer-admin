@@ -17,9 +17,15 @@ interface Props {
   onMove?: (lat: number, lng: number) => void;
   trail?: [number, number][];
   height?: number;
+  /** Optional place name shown/edited in the fields below the map. */
+  name?: string;
+  onNameChange?: (name: string) => void;
+  /** Show editable Name / Lat / Lng fields under the map (defaults to true when onMove is set). */
+  showFields?: boolean;
 }
 
 const KASHMIR_CENTER: [number, number] = [34.0, 74.8];
+const DEFAULT_ZOOM = 11;
 
 interface GeocodingResult {
   place_id: number;
@@ -28,7 +34,7 @@ interface GeocodingResult {
   lon: string;
 }
 
-export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
+export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameChange, showFields }: Props) {
   const id = useRef(`map-${Math.random().toString(36).slice(2)}`);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
@@ -40,7 +46,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
   const hasLocation = lat != null && lng != null;
 
   const [terrain3d, setTerrain3d] = useState(false);
-  const [zoom, setZoom] = useState(8);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [coordDisplay, setCoordDisplay] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +55,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
   const [showResults, setShowResults] = useState(false);
 
   const handleZoom = useCallback(() => {
-    setZoom(mapRef.current?.getZoom() ?? 8);
+    setZoom(mapRef.current?.getZoom() ?? DEFAULT_ZOOM);
   }, []);
 
   const handleMapClick = useCallback((e: L.LeafletMouseEvent) => {
@@ -62,7 +68,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
 
     const map = L.map(id.current, {
       center: hasLocation ? [lat!, lng!] : KASHMIR_CENTER,
-      zoom: hasLocation ? 11 : 8,
+      zoom: hasLocation ? 13 : DEFAULT_ZOOM,
       zoomControl: false,
     });
 
@@ -122,8 +128,10 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
       markerRef.current = null;
     }
 
-    const pos: [number, number] = hasLocation ? [lat!, lng!] : KASHMIR_CENTER;
-    const m = L.marker(pos, { draggable: !!onMove }).addTo(map);
+    // Only render a marker once an actual location exists — no default pin.
+    if (!hasLocation) return;
+
+    const m = L.marker([lat!, lng!], { draggable: !!onMove }).addTo(map);
 
     if (onMove) {
       m.on('dragend', () => {
@@ -186,10 +194,12 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
   const selectResult = (r: GeocodingResult) => {
     const slat = parseFloat(r.lat);
     const slng = parseFloat(r.lon);
-    setSearchQuery(r.display_name.split(',')[0]);
+    const placeName = r.display_name.split(',')[0];
+    setSearchQuery(placeName);
     setShowResults(false);
 
     if (onMove) onMove(slat, slng);
+    if (onNameChange) onNameChange(placeName);
     mapRef.current?.flyTo([slat, slng], 14);
   };
 
@@ -208,8 +218,11 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
     setTimeout(() => mapRef.current?.invalidateSize(), 150);
   };
 
+  const fieldsVisible = (showFields ?? !!onMove) && !fullscreen;
+
   return (
-    <div className={`relative ${fullscreen ? 'fixed inset-0 z-[9999] bg-white p-4' : ''}`}>
+    <div className={fullscreen ? 'fixed inset-0 z-[9999] bg-white p-4' : ''}>
+    <div className="relative">
       <div ref={searchRef} className="absolute top-3 left-3 z-[1000] w-[280px]">
         <div className="relative">
           <input
@@ -279,6 +292,57 @@ export function MapView({ lat, lng, onMove, trail, height = 300 }: Props) {
       {!hasLocation && !onMove && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-[999] pointer-events-none rounded-btn">
           <span className="text-sm text-ink-2 font-quote italic">No location set</span>
+        </div>
+      )}
+      </div>
+
+      {fieldsVisible && (
+        <div className="mt-3">
+          <p className="text-[11px] text-ink-3 mb-2">
+            Search, click the map, or drag the pin — fields below update automatically.
+          </p>
+          <div className={`grid gap-3 ${onNameChange ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {onNameChange && (
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-ink-2">Name</span>
+                <input
+                  type="text"
+                  value={name ?? ''}
+                  onChange={(e) => onNameChange(e.target.value)}
+                  placeholder="Place name"
+                  className="input text-xs h-8"
+                />
+              </label>
+            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-ink-2">Latitude</span>
+              <input
+                type="number"
+                step="0.0001"
+                value={lat ?? ''}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!Number.isNaN(v)) onMove?.(v, lng ?? KASHMIR_CENTER[1]);
+                }}
+                placeholder="34.0000"
+                className="input text-xs h-8 font-mono"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-ink-2">Longitude</span>
+              <input
+                type="number"
+                step="0.0001"
+                value={lng ?? ''}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!Number.isNaN(v)) onMove?.(lat ?? KASHMIR_CENTER[0], v);
+                }}
+                placeholder="74.8000"
+                className="input text-xs h-8 font-mono"
+              />
+            </label>
+          </div>
         </div>
       )}
     </div>

@@ -210,10 +210,20 @@ export default function TrekDetail() {
                 })}
               </div>
             </Field>
-            <Field label="Required Permits">
-              <Input value={(form.permits ?? []).join(', ')}
-                onChange={(e) => set('permits', e.target.value.split(',').map((s) => s.trim()).filter(Boolean) as any)}
-                placeholder="ILP, wildlife (comma-separated)" />
+            <Field label="Permit">
+              <Checkbox
+                label="A permit is required for this trek"
+                checked={form.requires_permit ?? false}
+                onChange={(v) => set('requires_permit', v as any)}
+              />
+              {form.requires_permit && (
+                <Input className="mt-2" value={(form.permits ?? []).join(', ')}
+                  onChange={(e) => set('permits', e.target.value.split(',').map((s) => s.trim()).filter(Boolean) as any)}
+                  placeholder="ILP, wildlife (comma-separated)" />
+              )}
+              <p className="text-[10px] text-ink-3 mt-1">
+                Leave unchecked where no permit is needed — the mobile app hides the permit note.
+              </p>
             </Field>
           </Section>
         </div>

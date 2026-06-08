@@ -156,6 +156,8 @@ export interface Destination {
   review_count: number;
   distance_from_srinagar_km?: number;
   entry_fee_inr?: number;
+  has_entry_fee?: boolean;
+  requires_permit?: boolean;
   categories?: string[];
   permits?: string[];
   activities?: string[];
@@ -164,11 +166,12 @@ export interface Destination {
     jio?: 'good' | 'patchy' | 'none';
     airtel?: 'good' | 'patchy' | 'none';
     bsnl?: 'good' | 'patchy' | 'none';
+    vi?: 'good' | 'patchy' | 'none';
   };
   practical?: {
     atm?: boolean;
     fuel_km?: number;
-    toilet?: 'clean' | 'basic' | 'none';
+    toilet?: 'clean' | 'basic' | 'paid' | 'none';
     drone?: boolean;
   };
   is_published?: boolean;
@@ -210,6 +213,7 @@ export interface Trek {
   end_point?: string;
   best_months?: number[];
   permits?: string[];
+  requires_permit?: boolean;
   ams_risk?: boolean;
   status: string;
   closure_reason?: string;
@@ -434,9 +438,109 @@ export interface Image {
 export const images = {
   forDestination: (id: string) => apiGet<Image[]>(`images/destination/${id}`),
   forTrek: (id: string) => apiGet<Image[]>(`images/trek/${id}`),
+  forPhotoSpot: (id: string) => apiGet<Image[]>(`images/photo-spot/${id}`),
   create: (data: Partial<Image>) => apiPost<{ id: string }>('admin/images', data),
   update: (id: string, data: Partial<Image>) => apiPut<{ updated: string }>(`admin/images/${id}`, data),
   remove: (id: string) => apiDelete(`admin/images/${id}`),
+
+  /**
+   * Upload raw image bytes, stored directly in the DB. The backend creates the
+   * `images` row (linked to the destination/trek) and returns its id + serve URL.
+   */
+  upload: async (
+    entityType: 'destination' | 'trek' | 'photo_spot',
+    entityId: string,
+    file: File,
+    extra?: { is_hero?: boolean; sort_order?: number; caption?: string },
+  ): Promise<{ id: string; url: string }> => {
+    const paramKey =
+      entityType === 'destination'
+        ? 'destination_id'
+        : entityType === 'trek'
+          ? 'trek_id'
+          : 'photo_spot_id';
+    const params = new URLSearchParams();
+    params.set(paramKey, entityId);
+    if (extra?.is_hero) params.set('is_hero', 'true');
+    if (extra?.sort_order != null) params.set('sort_order', String(extra.sort_order));
+    if (extra?.caption) params.set('caption', extra.caption);
+    const res = (await api
+      .post(`upload/image?${params.toString()}`, {
+        body: file,
+        headers: { 'content-type': file.type || 'application/octet-stream' },
+      })
+      .json()) as { data?: { id: string; url: string } };
+    if (!res.data) throw new Error('upload failed');
+    return res.data;
+  },
+};
+
+/**
+ * Resolve an image URL from the API into something the admin can load.
+ * DB-stored images come back as server-relative paths like
+ * `/v1/images/{id}/raw`; route those through the same-origin BFF proxy
+ * (`/api/be/...`). Absolute URLs (legacy object storage) pass through.
+ */
+export function resolveMediaUrl(src?: string | null): string {
+  if (!src) return '';
+  if (/^https?:\/\//i.test(src) || src.startsWith('data:')) return src;
+  if (src.startsWith('/v1/')) return `${BFF_BASE}/${src.slice('/v1/'.length)}`;
+  if (src.startsWith('/')) return `${BFF_BASE}${src}`;
+  return src;
+}
+
+// ─── Home hero banners (curated home-screen carousel) ───────
+
+export type HeroLinkType = 'none' | 'destination' | 'trek' | 'screen';
+
+export interface HomeHeroBanner {
+  id: string;
+  image_url: string;
+  blurhash?: string;
+  title?: string;
+  subtitle?: string;
+  link_type: HeroLinkType;
+  link_value?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const homeHero = {
+  // Admin list returns inactive banners too.
+  list: () => apiGet<HomeHeroBanner[]>('admin/home-hero'),
+  get: (id: string) => apiGet<HomeHeroBanner>(`admin/home-hero/${id}`),
+  create: (data: Partial<HomeHeroBanner>) => apiPost<{ id: string }>('admin/home-hero', data),
+  update: (id: string, data: Partial<HomeHeroBanner>) => apiPut<{ updated: string }>(`admin/home-hero/${id}`, data),
+  remove: (id: string) => apiDelete(`admin/home-hero/${id}`),
+};
+
+// ─── App theme (color overrides applied by the mobile app) ──
+
+export interface AppTheme {
+  /** Map of design-token color keys → hex. Empty = use shipped defaults. */
+  colors: Record<string, string>;
+  updated_at: string;
+}
+
+export const appTheme = {
+  get: () => apiGet<AppTheme>('admin/theme'),
+  update: (colors: Record<string, string>) => apiPut<AppTheme>('admin/theme', { colors }),
+};
+
+// ─── Map config (terrain relief the mobile app renders) ─────
+
+export interface MapConfig {
+  /** Terrain relief scale, 0–3 (applied to the native MapLibre hillshade). */
+  terrain_exaggeration: number;
+  updated_at: string;
+}
+
+export const mapConfig = {
+  get: () => apiGet<MapConfig>('admin/map-config'),
+  update: (data: { terrain_exaggeration: number }) =>
+    apiPut<MapConfig>('admin/map-config', data),
 };
 
 // ─── Existing types (kept for backward compat) ──────────────
