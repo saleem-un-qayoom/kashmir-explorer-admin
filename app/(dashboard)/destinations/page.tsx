@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -28,6 +28,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function DestinationsPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  const [, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>('published');
   const [search, setSearch] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -40,6 +41,9 @@ export default function DestinationsPage() {
     // Keep previous tab's data visible while new tab fetches — no empty flash.
     placeholderData: (prev) => prev,
     staleTime: 30_000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    gcTime: 5 * 60_000,
   });
 
   const remove = useMutation({
@@ -79,7 +83,7 @@ export default function DestinationsPage() {
         title="Destinations"
         subtitle={`${data?.length ?? 0} ${tab === 'deleted' ? 'deleted' : tab === 'all' ? 'total' : tab}`}
         action={
-          <button className="btn btn-primary" onClick={() => router.push('/destinations/new')}>
+          <button className="btn btn-primary" onClick={() => startTransition(() => router.push('/destinations/new'))}>
             + New destination
           </button>
         }

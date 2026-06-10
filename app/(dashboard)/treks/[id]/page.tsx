@@ -364,6 +364,16 @@ export default function TrekDetail() {
             </div>
           </Section>
 
+          <Section title="Guide">
+            <Checkbox label="Guide available to book" checked={form.guide_available ?? false} onChange={(v) => set('guide_available', v)} />
+            <Field label="Guide price (₹)">
+              <Input type="number" className="font-mono" value={form.guide_price_inr ?? ''} onChange={(e) => set('guide_price_inr', (parseInt(e.target.value) || undefined) as any)} placeholder="e.g. 4500" />
+            </Field>
+            <div className="text-xs text-ink-3">
+              Drives the “Book a guide — from ₹…” card on the mobile trek detail. Uncheck to hide the card.
+            </div>
+          </Section>
+
           <Section title="Discovery · features & activities">
             <Field label="Trail features">
               <ToggleGrid

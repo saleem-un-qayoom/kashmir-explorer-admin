@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import ReactSelect from 'react-select';
 
 /* ─── Input ──────────────────────────────────────────── */
@@ -11,12 +11,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', ...props }, ref) => (
     <input
       ref={ref}
-      className={`input ${className}`}
+      className={`input transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400 ${className}`}
       {...props}
     />
   ),
 );
 Input.displayName = 'Input';
+
+function useDarkMode() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    setIsDark(isDarkMode);
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+}
 
 /* ─── Textarea ────────────────────────────────────────── */
 
@@ -26,7 +40,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className = '', ...props }, ref) => (
     <textarea
       ref={ref}
-      className={`input ${className}`}
+      className={`input transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400 ${className}`}
       {...props}
     />
   ),
@@ -45,22 +59,22 @@ type CheckboxProps = {
 
 export function Checkbox({ label, checked, onChange, accent = 'dal', id }: CheckboxProps) {
   const accentMap: Record<string, string> = {
-    dal: 'accent-dal',
+    dal: 'accent-purple-600 dark:accent-purple-500',
     chinar: 'accent-chinar',
     saffron: 'accent-saffron',
     emerald: 'accent-emerald',
   };
   const uid = id ?? `cb-${label.replace(/\s+/g, '-').toLowerCase()}`;
   return (
-    <label htmlFor={uid} className="flex items-center gap-2 cursor-pointer">
+    <label htmlFor={uid} className="flex items-center gap-3 cursor-pointer group">
       <input
         id={uid}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className={`${accentMap[accent] ?? 'accent-dal'} w-4 h-4`}
+        className={`${accentMap[accent] ?? 'accent-purple-600 dark:accent-purple-500'} w-4 h-4 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:outline-none`}
       />
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">{label}</span>
     </label>
   );
 }
@@ -75,15 +89,16 @@ const CONTROL_STYLES = {
   backgroundColor: '#fff',
   padding: '0',
   cursor: 'pointer',
-  '&:hover': { borderColor: '#E5D9C5' },
+  transition: 'all 200ms ease',
+  '&:hover': { borderColor: '#9333EA', boxShadow: '0 0 0 1px rgba(147, 51, 234, 0.1)' },
 };
 
 const SELECT_STYLES_BASE = {
   control: (base: any, state: any) => ({
     ...base,
     ...CONTROL_STYLES,
-    borderColor: state.isFocused ? '#2A5266' : '#E5D9C5',
-    boxShadow: state.isFocused ? '0 0 0 1px rgba(42,82,102,0.2)' : 'none',
+    borderColor: state.isFocused ? '#9333EA' : '#E5D9C5',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
   }),
   valueContainer: (base: any) => ({
     ...base,
@@ -128,12 +143,13 @@ const SELECT_STYLES_BASE = {
     borderRadius: '4px',
     cursor: 'pointer',
     backgroundColor: state.isSelected
-      ? '#2A5266'
+      ? '#9333EA'
       : state.isFocused
         ? '#F5EBDC'
         : 'transparent',
     color: state.isSelected ? '#fff' : '#1A1612',
-    '&:active': { backgroundColor: state.isSelected ? '#2A5266' : '#F5EBDC' },
+    transition: 'all 150ms ease',
+    '&:active': { backgroundColor: state.isSelected ? '#9333EA' : '#F5EBDC' },
   }),
   indicatorSeparator: () => ({ display: 'none' }),
   dropdownIndicator: (base: any) => ({
@@ -184,12 +200,52 @@ export function Select({
   isDisabled,
   menuPortalTarget,
 }: CustomSelectProps) {
+  const isDark = useDarkMode();
   const selected = options.find((o) => o.value === value) ?? null;
+
+  const styles = isDark ? {
+    ...SELECT_STYLES_BASE,
+    control: (base: any, state: any) => ({
+      ...SELECT_STYLES_BASE.control(base, state),
+      borderColor: state.isFocused ? '#9333EA' : '#2A3D48',
+      backgroundColor: '#172832',
+      boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
+      '&:hover': { borderColor: '#7C3AED' },
+    }),
+    valueContainer: (base: any) => ({
+      ...SELECT_STYLES_BASE.valueContainer(base),
+      color: '#F5EBDC',
+    }),
+    singleValue: (base: any) => ({
+      ...SELECT_STYLES_BASE.singleValue(base),
+      color: '#F5EBDC',
+    }),
+    input: (base: any) => ({
+      ...SELECT_STYLES_BASE.input(base),
+      color: '#F5EBDC',
+    }),
+    menu: (base: any) => ({
+      ...SELECT_STYLES_BASE.menu(base),
+      backgroundColor: '#172832',
+      borderColor: '#2A3D48',
+    }),
+    option: (base: any, state: any) => ({
+      ...SELECT_STYLES_BASE.option(base, state),
+      backgroundColor: state.isSelected ? '#9333EA' : state.isFocused ? '#1E3340' : 'transparent',
+      color: state.isSelected ? '#fff' : '#F5EBDC',
+      transition: 'all 150ms ease',
+    }),
+    noOptionsMessage: (base: any) => ({
+      ...SELECT_STYLES_BASE.noOptionsMessage(base),
+      color: '#A89B89',
+    }),
+  } : SELECT_STYLES_BASE;
+
   return (
     <ReactSelect
       className={className}
       classNamePrefix="ks"
-      styles={SELECT_STYLES_BASE}
+      styles={styles}
       options={options}
       value={selected}
       onChange={(opt: any) => onChange(opt?.value ?? '')}
@@ -220,17 +276,57 @@ export function MultiSelect({
   className = '',
   isDisabled,
 }: MultiSelectProps) {
+  const isDark = useDarkMode();
   const selected = options.filter((o) => value.includes(o.value));
+
+  const baseStyles = isDark ? {
+    ...SELECT_STYLES_BASE,
+    control: (base: any, state: any) => ({
+      ...SELECT_STYLES_BASE.control(base, state),
+      borderColor: state.isFocused ? '#9333EA' : '#2A3D48',
+      backgroundColor: '#172832',
+      boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
+      '&:hover': { borderColor: '#7C3AED' },
+    }),
+    valueContainer: (base: any) => ({
+      ...SELECT_STYLES_BASE.valueContainer(base),
+      color: '#F5EBDC',
+    }),
+    singleValue: (base: any) => ({
+      ...SELECT_STYLES_BASE.singleValue(base),
+      color: '#F5EBDC',
+    }),
+    input: (base: any) => ({
+      ...SELECT_STYLES_BASE.input(base),
+      color: '#F5EBDC',
+    }),
+    menu: (base: any) => ({
+      ...SELECT_STYLES_BASE.menu(base),
+      backgroundColor: '#172832',
+      borderColor: '#2A3D48',
+    }),
+    option: (base: any, state: any) => ({
+      ...SELECT_STYLES_BASE.option(base, state),
+      backgroundColor: state.isSelected ? '#9333EA' : state.isFocused ? '#1E3340' : 'transparent',
+      color: state.isSelected ? '#fff' : '#F5EBDC',
+      transition: 'all 150ms ease',
+    }),
+    noOptionsMessage: (base: any) => ({
+      ...SELECT_STYLES_BASE.noOptionsMessage(base),
+      color: '#A89B89',
+    }),
+  } : SELECT_STYLES_BASE;
+
   return (
     <ReactSelect
       isMulti
       className={className}
       classNamePrefix="ks"
       styles={{
-        ...SELECT_STYLES_BASE,
+        ...baseStyles,
         multiValue: (base: any) => ({
           ...base,
-          backgroundColor: '#F5EBDC',
+          backgroundColor: isDark ? '#1E3340' : '#F5EBDC',
           borderRadius: '999px',
           padding: '0 4px',
           margin: '2px',
@@ -238,13 +334,13 @@ export function MultiSelect({
         multiValueLabel: (base: any) => ({
           ...base,
           fontSize: '12px',
-          color: '#1A1612',
+          color: isDark ? '#F5EBDC' : '#1A1612',
           padding: '2px 4px',
         }),
         multiValueRemove: (base: any) => ({
           ...base,
           borderRadius: '999px',
-          color: '#8B7E6F',
+          color: isDark ? '#A89B89' : '#8B7E6F',
           '&:hover': { backgroundColor: '#B23A2E', color: '#fff' },
         }),
       }}

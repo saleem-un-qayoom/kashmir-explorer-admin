@@ -138,6 +138,10 @@ function ProviderModal({ qc, initial, onClose }: { qc: ReturnType<typeof useQuer
             <label className="block text-xs font-medium text-ink-2 mb-1">Languages (comma-separated)</label>
             <Input value={(form.languages ?? []).join(', ')} onChange={(e) => set('languages', e.target.value.split(',').map((s) => s.trim()).filter(Boolean) as any)} placeholder="English, Hindi, Kashmiri" />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-2 mb-1">Amenities (comma-separated)</label>
+            <Input value={(form.amenities ?? []).join(', ')} onChange={(e) => set('amenities', e.target.value.split(',').map((s) => s.trim()).filter(Boolean) as any)} placeholder="Wi-Fi, Breakfast, Heater, Hot water" />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-ink-2 mb-1">Phone</label>

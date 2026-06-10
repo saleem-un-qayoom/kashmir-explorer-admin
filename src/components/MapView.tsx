@@ -27,6 +27,12 @@ interface Props {
 const KASHMIR_CENTER: [number, number] = [34.0, 74.8];
 const DEFAULT_ZOOM = 11;
 
+// Kashmir region boundaries (approximate)
+const KASHMIR_BOUNDS: [[number, number], [number, number]] = [
+  [32.8, 73.0],  // Southwest
+  [37.5, 77.8],  // Northeast
+];
+
 interface GeocodingResult {
   place_id: number;
   display_name: string;
@@ -70,11 +76,29 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
       center: hasLocation ? [lat!, lng!] : KASHMIR_CENTER,
       zoom: hasLocation ? 13 : DEFAULT_ZOOM,
       zoomControl: false,
+      maxBounds: KASHMIR_BOUNDS,
+      maxBoundsViscosity: 1.0,
+      minZoom: 9,
+      maxZoom: 16,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap',
+      bounds: KASHMIR_BOUNDS,
+      maxNativeZoom: 19,
+    }).addTo(map);
+
+    // Add Kashmir boundary visualization
+    L.rectangle(KASHMIR_BOUNDS, {
+      color: '#7C3AED',
+      weight: 2.5,
+      opacity: 0.7,
+      fill: true,
+      fillColor: '#7C3AED',
+      fillOpacity: 0.05,
+      dashArray: '6, 4',
+      lineCap: 'round',
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -230,22 +254,22 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
             value={searchQuery}
             onChange={(e) => handleSearchInput(e.target.value)}
             placeholder="Search places…"
-            className="w-full input text-xs h-8 pl-7"
+            className="w-full input text-xs h-9 pl-7 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
           />
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-ink-3 pointer-events-none">🔍</span>
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-600 dark:text-slate-400 pointer-events-none font-semibold">🔍</span>
           {searching && (
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-ink-3 animate-pulse">…</span>
           )}
           {showResults && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-line rounded-card shadow-md max-h-[220px] overflow-y-auto z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-[220px] overflow-y-auto z-50">
               {searchResults.map((r) => (
                 <button
                   key={r.place_id}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-pashmina/40 border-b border-line last:border-0 transition"
+                  className="w-full text-left px-3 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors duration-150"
                   onClick={() => selectResult(r)}
                 >
-                  <span className="block truncate">{r.display_name}</span>
-                  <span className="text-[9px] text-ink-3 mt-0.5 block font-mono">
+                  <span className="block truncate font-medium">{r.display_name}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block font-mono">
                     {r.lat.slice(0, 7)}, {r.lon.slice(0, 7)}
                   </span>
                 </button>
@@ -270,10 +294,10 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
         </div>
       </div>
 
-      <div className="absolute top-3 right-3 z-[1000] flex gap-1">
+      <div className="absolute top-3 right-3 z-[1000] flex gap-2">
         <button
-          className={`text-xs px-2 py-1 rounded font-medium border transition ${
-            terrain3d ? 'bg-dal text-white border-dal' : 'bg-white/90 backdrop-blur text-ink-2 border-line/50 hover:bg-white'
+          className={`text-xs px-3 py-1.5 rounded font-semibold border transition-all duration-200 ${
+            terrain3d ? 'bg-purple-600 text-white border-purple-600 shadow-md hover:shadow-lg hover:bg-purple-700' : 'bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-purple-400 hover:shadow-md'
           }`}
           onClick={() => setTerrain3d((v) => !v)}
           title={terrain3d ? 'Hide terrain' : 'Show terrain'}
@@ -281,7 +305,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
           3D
         </button>
         <button
-          className="text-xs px-2 py-1 rounded font-medium border bg-white/90 backdrop-blur text-ink-2 border-line/50 hover:bg-white transition leading-none"
+          className="text-xs px-3 py-1.5 rounded font-semibold border bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-purple-400 hover:shadow-md transition-all duration-200 leading-none"
           onClick={toggleFullscreen}
           title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
@@ -297,25 +321,25 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
       </div>
 
       {fieldsVisible && (
-        <div className="mt-3">
-          <p className="text-[11px] text-ink-3 mb-2">
+        <div className="mt-4">
+          <p className="text-[11px] text-slate-600 dark:text-slate-400 mb-3 font-medium">
             Search, click the map, or drag the pin — fields below update automatically.
           </p>
-          <div className={`grid gap-3 ${onNameChange ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div className={`grid gap-4 ${onNameChange ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {onNameChange && (
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium text-ink-2">Name</span>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Name</span>
                 <input
                   type="text"
                   value={name ?? ''}
                   onChange={(e) => onNameChange(e.target.value)}
                   placeholder="Place name"
-                  className="input text-xs h-8"
+                  className="input text-xs h-9 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
                 />
               </label>
             )}
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium text-ink-2">Latitude</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Latitude</span>
               <input
                 type="number"
                 step="0.0001"
@@ -325,11 +349,11 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
                   if (!Number.isNaN(v)) onMove?.(v, lng ?? KASHMIR_CENTER[1]);
                 }}
                 placeholder="34.0000"
-                className="input text-xs h-8 font-mono"
+                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
               />
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium text-ink-2">Longitude</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Longitude</span>
               <input
                 type="number"
                 step="0.0001"
@@ -339,7 +363,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
                   if (!Number.isNaN(v)) onMove?.(lat ?? KASHMIR_CENTER[0], v);
                 }}
                 placeholder="74.8000"
-                className="input text-xs h-8 font-mono"
+                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
               />
             </label>
           </div>

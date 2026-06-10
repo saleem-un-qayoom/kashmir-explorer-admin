@@ -2,9 +2,9 @@
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="card p-6">
-      <h3 className="font-heading text-sm tracking-wider text-ink-3 mb-4">{title.toUpperCase()}</h3>
-      <div className="space-y-4">{children}</div>
+    <div className="card p-6 border-l-4 border-l-purple-600 dark:border-l-purple-500 transition-all duration-200 hover:shadow-lg">
+      <h3 className="font-heading text-sm font-semibold tracking-wider text-purple-700 dark:text-purple-300 mb-5 uppercase">{title}</h3>
+      <div className="space-y-5">{children}</div>
     </div>
   );
 }
@@ -12,8 +12,8 @@ export function Section({ title, children }: { title: string; children: React.Re
 export function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-ink-2 mb-1">
-        {label} {required && <span className="text-chinar">*</span>}
+      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 transition-colors duration-200">
+        {label} {required && <span className="text-orange-500 dark:text-orange-400 font-bold">*</span>}
       </label>
       {children}
     </div>

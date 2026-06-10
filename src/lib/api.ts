@@ -143,6 +143,8 @@ export interface Destination {
   name_urdu?: string;
   name_hindi?: string;
   district?: string;
+  tehsil?: string;
+  address?: string;
   region_slug?: string;
   tagline?: string;
   uniqueness?: string;
@@ -156,6 +158,7 @@ export interface Destination {
   review_count: number;
   distance_from_srinagar_km?: number;
   entry_fee_inr?: number;
+  entry_fee_foreign_inr?: number;
   has_entry_fee?: boolean;
   requires_permit?: boolean;
   categories?: string[];
@@ -174,6 +177,9 @@ export interface Destination {
     toilet?: 'clean' | 'basic' | 'paid' | 'none';
     drone?: boolean;
   };
+  open_hours?: { label: string; hours: string }[];
+  closure_dates?: string[];
+  emergency_contacts?: { label: string; phone: string }[];
   is_published?: boolean;
   is_featured?: boolean;
   is_deleted?: boolean;

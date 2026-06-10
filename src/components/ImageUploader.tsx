@@ -57,8 +57,10 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
   return (
     <div>
       <div
-        className={`border-2 border-dashed rounded-btn p-4 text-center cursor-pointer transition ${
-          dragOver ? 'border-dal bg-dal/10' : 'border-line hover:border-dal/50'
+        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 ${
+          dragOver
+            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+            : 'border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-slate-50 dark:hover:bg-slate-900/50'
         }`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -66,33 +68,46 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
         onClick={() => inputRef.current?.click()}
       >
         {uploading ? (
-          <span className="text-sm text-ink-2">Uploading…</span>
+          <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">Uploading…</span>
         ) : (
-          <span className="text-sm text-ink-2">Drop image here or click to upload</span>
+          <>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Drop images here or click to upload</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">PNG, JPG up to 10MB each</p>
+          </>
         )}
         <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       </div>
-      {error && <p className="mt-2 text-xs text-chinar font-semibold">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-semibold">⚠️ {error}</p>}
       {(data?.length ?? 0) > 0 && (
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-4 gap-3 mt-4">
           {data?.map((img) => (
-            <div key={img.id} className="group relative rounded-btn overflow-hidden border border-line bg-pashmina/20">
+            <div key={img.id} className="group relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={resolveMediaUrl(img.url)} alt={img.caption ?? ''} className="w-full h-24 object-cover" />
-              {img.is_hero && <span className="absolute top-1 left-1 text-[10px] bg-dal text-white px-1.5 py-0.5 rounded font-bold">HERO</span>}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                <button className="text-[10px] bg-white text-ink-1 px-2 py-1 rounded" onClick={() => heroMut.mutate({ id: img.id, is_hero: !img.is_hero })}>
-                  {img.is_hero ? 'Unset' : 'Hero'}
+              <img src={resolveMediaUrl(img.url)} alt={img.caption ?? ''} className="w-full h-32 object-cover" />
+              {img.is_hero && (
+                <span className="absolute top-2 left-2 text-[11px] bg-purple-600 text-white px-2 py-1 rounded-full font-bold">
+                  ⭐ HERO
+                </span>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                <button
+                  className="text-[10px] bg-white text-slate-900 px-2.5 py-1 rounded font-semibold transition-all hover:bg-slate-100"
+                  onClick={() => heroMut.mutate({ id: img.id, is_hero: !img.is_hero })}
+                >
+                  {img.is_hero ? '✓ Hero' : '☆ Hero'}
                 </button>
-                <button className="text-[10px] bg-chinar text-white px-2 py-1 rounded" onClick={() => del.mutate(img.id)}>
-                  Del
+                <button
+                  className="text-[10px] bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded font-semibold transition-all"
+                  onClick={() => del.mutate(img.id)}
+                >
+                  🗑️ Remove
                 </button>
               </div>
               <input
-                className="w-full text-[10px] px-1 py-0.5 border-t border-line outline-none"
+                className="w-full text-[10px] px-2 py-1 border-t border-slate-200 dark:border-slate-700 outline-none bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-all focus:ring-1 focus:ring-purple-500"
                 defaultValue={img.caption ?? ''}
                 onBlur={(e) => { if (e.target.value !== (img.caption ?? '')) captionMut.mutate({ id: img.id, caption: e.target.value }); }}
-                placeholder="Caption…"
+                placeholder="Add caption…"
               />
             </div>
           ))}
