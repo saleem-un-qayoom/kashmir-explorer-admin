@@ -59,8 +59,8 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
       <div
         className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 ${
           dragOver
-            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-            : 'border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-slate-50 dark:hover:bg-slate-900/50'
+            ? 'border-kong bg-kong/10 dark:bg-kong/15'
+            : 'border-slate-300 dark:border-slate-600 hover:border-kong/50 dark:hover:border-kong hover:bg-slate-50 dark:hover:bg-slate-900/50'
         }`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -68,7 +68,7 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
         onClick={() => inputRef.current?.click()}
       >
         {uploading ? (
-          <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">Uploading…</span>
+          <span className="text-sm font-semibold text-kong dark:text-kong/50">Uploading…</span>
         ) : (
           <>
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Drop images here or click to upload</span>
@@ -85,7 +85,7 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={resolveMediaUrl(img.url)} alt={img.caption ?? ''} className="w-full h-32 object-cover" />
               {img.is_hero && (
-                <span className="absolute top-2 left-2 text-[11px] bg-purple-600 text-white px-2 py-1 rounded-full font-bold">
+                <span className="absolute top-2 left-2 text-[11px] bg-kong text-white px-2 py-1 rounded-full font-bold">
                   ⭐ HERO
                 </span>
               )}
@@ -104,7 +104,7 @@ export function ImageUploader({ entityType, entityId }: { entityType: 'destinati
                 </button>
               </div>
               <input
-                className="w-full text-[10px] px-2 py-1 border-t border-slate-200 dark:border-slate-700 outline-none bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-all focus:ring-1 focus:ring-purple-500"
+                className="w-full text-[10px] px-2 py-1 border-t border-slate-200 dark:border-slate-700 outline-none bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-all focus:ring-1 focus:ring-kong"
                 defaultValue={img.caption ?? ''}
                 onBlur={(e) => { if (e.target.value !== (img.caption ?? '')) captionMut.mutate({ id: img.id, caption: e.target.value }); }}
                 placeholder="Add caption…"

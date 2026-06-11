@@ -147,13 +147,13 @@ export default function DestinationDetail() {
         action={
           <div className="flex gap-2">
             <button
-              className="btn btn-ghost transition-all duration-200 hover:bg-opacity-80 focus:ring-2 focus:ring-purple-500/20 focus:outline-none"
+              className="btn btn-ghost transition-all duration-200 hover:bg-opacity-80 focus:ring-2 focus:ring-kong/20 focus:outline-none"
               onClick={() => router.push('/destinations')}
             >
               Cancel
             </button>
             <button
-              className="btn bg-purple-600 hover:bg-purple-700 text-white transition-all duration-200 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-purple-500/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn bg-kong hover:bg-kong-deep text-white transition-all duration-200 shadow-lg hover:shadow-xl focus:ring-2 focus:ring-kong/40 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => save.mutate()}
               disabled={save.isPending}
             >
@@ -174,11 +174,11 @@ export default function DestinationDetail() {
         <Section title="Hero Gallery">
           {isNew ? (
             <div className="space-y-3">
-              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                <p className="text-sm font-medium text-purple-900 dark:text-purple-200">
+              <div className="bg-kong/10 dark:bg-kong/15 border border-kong/30 dark:border-kong-deep rounded-lg p-4">
+                <p className="text-sm font-medium text-kong-deep dark:text-kong">
                   📸 Save destination first to add images
                 </p>
-                <p className="text-[11px] text-purple-700 dark:text-purple-300 mt-2">
+                <p className="text-[11px] text-kong-deep dark:text-kong/40 mt-2">
                   After creating this destination, you'll be able to upload banner images and mark which one appears on the mobile detail screen.
                 </p>
               </div>
@@ -457,8 +457,8 @@ export default function DestinationDetail() {
                     type="button"
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                       active
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md hover:shadow-lg hover:bg-purple-700'
-                        : 'bg-white dark:bg-slate-800 text-ink-2 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-sm'
+                        ? 'bg-kong text-white border-kong shadow-md hover:shadow-lg hover:bg-kong-deep'
+                        : 'bg-white dark:bg-slate-800 text-ink-2 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-kong/50 dark:hover:border-kong hover:shadow-sm'
                     }`}
                     onClick={() => {
                       const months = form.best_months ?? [];
@@ -570,12 +570,12 @@ export default function DestinationDetail() {
         {!isNew && (
           <Section title="Statistics (Read-only)">
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="text-3xl font-mono font-bold text-purple-600 dark:text-purple-400">{form.rating?.toFixed(1) ?? '—'}</div>
+              <div className="text-center p-4 bg-kong/10 dark:bg-kong/15 rounded-lg border border-kong/30 dark:border-kong-deep">
+                <div className="text-3xl font-mono font-bold text-kong dark:text-kong/50">{form.rating?.toFixed(1) ?? '—'}</div>
                 <div className="text-[10px] tracking-wider text-slate-600 dark:text-slate-400 mt-2 font-semibold">RATING</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                <div className="text-3xl font-mono font-bold text-purple-600 dark:text-purple-400">
+              <div className="text-center p-4 bg-kong/10 dark:bg-kong/15 rounded-lg border border-kong/30 dark:border-kong-deep">
+                <div className="text-3xl font-mono font-bold text-kong dark:text-kong/50">
                   {form.review_count?.toLocaleString('en-IN') ?? '—'}
                 </div>
                 <div className="text-[10px] tracking-wider text-slate-600 dark:text-slate-400 mt-2 font-semibold">REVIEWS</div>

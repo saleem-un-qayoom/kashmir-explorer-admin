@@ -2,8 +2,8 @@
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="card p-6 border-l-4 border-l-purple-600 dark:border-l-purple-500 transition-all duration-200 hover:shadow-lg">
-      <h3 className="font-heading text-sm font-semibold tracking-wider text-purple-700 dark:text-purple-300 mb-5 uppercase">{title}</h3>
+    <div className="card p-6 border-l-4 border-l-kong dark:border-l-kong transition-all duration-200 hover:shadow-lg">
+      <h3 className="font-heading text-sm font-semibold tracking-wider text-kong-deep dark:text-kong/40 mb-5 uppercase">{title}</h3>
       <div className="space-y-5">{children}</div>
     </div>
   );

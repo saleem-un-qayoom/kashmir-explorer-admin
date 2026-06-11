@@ -147,35 +147,37 @@ export default function OverviewPage() {
             <div className="stagger grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-4 p-4 lg:p-5">
               {kpis.map((kpi, i) => {
                 const s = TONE_STYLES[kpi.tone];
+                const featured = i === 0; // Donezo: first KPI is the green-gradient hero card
+                const sparkColor = featured ? '#FFFFFF' : kpi.tone === 'sapphire' ? '#3B6FE0' : kpi.tone === 'chinar' ? '#E2483D' : '#1F9D57';
                 return (
                   <div
                     key={kpi.label}
-                    className={`kpi-glow ${s.glow} relative overflow-hidden p-5 rounded-xl border ${s.border} transition-all duration-300 hover:shadow-warm-lg hover:-translate-y-0.5 bg-white dark:bg-dark-surface`}
+                    className={`kpi-glow ${featured ? '' : s.glow} relative overflow-hidden p-5 rounded-xl border transition-all duration-300 hover:shadow-warm-lg hover:-translate-y-0.5 ${featured ? 'border-transparent bg-gradient-to-br from-kong to-kong-deep text-white shadow-warm-lg' : `${s.border} bg-white dark:bg-dark-surface`}`}
                     style={{ animationDelay: `${0.04 * i}s` }}
                   >
                     {/* Decorative corner glow */}
-                    <div className={`pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-gradient-to-br ${s.ring} to-transparent blur-xl`} />
+                    <div className={`pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full bg-gradient-to-br ${featured ? 'from-white/25' : s.ring} to-transparent blur-xl`} />
                     <div className="flex items-start justify-between">
-                      <div className="font-mono text-[10px] tracking-widest uppercase text-ink-3 dark:text-dark-text-3">{kpi.label}</div>
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${s.bg} ${kpi.alert ? 'animate-pulse' : ''}`}>
-                        <kpi.Icon size={16} weight="fill" className={s.text} />
+                      <div className={`font-mono text-[10px] tracking-widest uppercase ${featured ? 'text-white/70' : 'text-ink-3 dark:text-dark-text-3'}`}>{kpi.label}</div>
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${featured ? 'bg-white/15' : s.bg} ${kpi.alert ? 'animate-pulse' : ''}`}>
+                        <kpi.Icon size={16} weight="fill" className={featured ? 'text-white' : s.text} />
                       </div>
                     </div>
                     <div className="flex items-end gap-3">
                       {kpi.loading ? (
                         <div className="skeleton mt-3 h-10 w-16 rounded" />
                       ) : (
-                        <div className={`font-serif text-4xl font-bold mt-2 ${s.text} animate-count-up`}>
+                        <div className={`font-serif text-4xl font-bold mt-2 ${featured ? 'text-white' : s.text} animate-count-up`}>
                           <AnimatedNumber value={kpi.value} />
                         </div>
                       )}
                       {kpi.spark && !kpi.loading && (
                         <div className="mb-1">
-                          <Sparkline data={kpi.spark} color={TONE_STYLES[kpi.tone].text.replace('text-', '#') === '#E8893A' ? '#E8893A' : '#2D6A4F'} />
+                          <Sparkline data={kpi.spark} color={sparkColor} />
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-ink-2 dark:text-dark-text-2 mt-1 font-medium">{kpi.sub}</div>
+                    <div className={`text-xs mt-1 font-medium ${featured ? 'text-white/70' : 'text-ink-2 dark:text-dark-text-2'}`}>{kpi.sub}</div>
                   </div>
                 );
               })}

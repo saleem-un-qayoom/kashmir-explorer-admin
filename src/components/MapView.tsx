@@ -91,11 +91,11 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
 
     // Add Kashmir boundary visualization
     L.rectangle(KASHMIR_BOUNDS, {
-      color: '#7C3AED',
+      color: '#1F9D57',
       weight: 2.5,
       opacity: 0.7,
       fill: true,
-      fillColor: '#7C3AED',
+      fillColor: '#1F9D57',
       fillOpacity: 0.05,
       dashArray: '6, 4',
       lineCap: 'round',
@@ -254,7 +254,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
             value={searchQuery}
             onChange={(e) => handleSearchInput(e.target.value)}
             placeholder="Search places…"
-            className="w-full input text-xs h-9 pl-7 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
+            className="w-full input text-xs h-9 pl-7 transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong"
           />
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-600 dark:text-slate-400 pointer-events-none font-semibold">🔍</span>
           {searching && (
@@ -265,7 +265,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
               {searchResults.map((r) => (
                 <button
                   key={r.place_id}
-                  className="w-full text-left px-3 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors duration-150"
+                  className="w-full text-left px-3 py-2.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-kong/10 dark:hover:bg-kong/15 border-b border-slate-100 dark:border-slate-700 last:border-0 transition-colors duration-150"
                   onClick={() => selectResult(r)}
                 >
                   <span className="block truncate font-medium">{r.display_name}</span>
@@ -297,7 +297,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
       <div className="absolute top-3 right-3 z-[1000] flex gap-2">
         <button
           className={`text-xs px-3 py-1.5 rounded font-semibold border transition-all duration-200 ${
-            terrain3d ? 'bg-purple-600 text-white border-purple-600 shadow-md hover:shadow-lg hover:bg-purple-700' : 'bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-purple-400 hover:shadow-md'
+            terrain3d ? 'bg-kong text-white border-kong shadow-md hover:shadow-lg hover:bg-kong-deep' : 'bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-kong/50 hover:shadow-md'
           }`}
           onClick={() => setTerrain3d((v) => !v)}
           title={terrain3d ? 'Hide terrain' : 'Show terrain'}
@@ -305,7 +305,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
           3D
         </button>
         <button
-          className="text-xs px-3 py-1.5 rounded font-semibold border bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-purple-400 hover:shadow-md transition-all duration-200 leading-none"
+          className="text-xs px-3 py-1.5 rounded font-semibold border bg-white/90 backdrop-blur text-slate-700 border-slate-200 hover:border-kong/50 hover:shadow-md transition-all duration-200 leading-none"
           onClick={toggleFullscreen}
           title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
         >
@@ -334,7 +334,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
                   value={name ?? ''}
                   onChange={(e) => onNameChange(e.target.value)}
                   placeholder="Place name"
-                  className="input text-xs h-9 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
+                  className="input text-xs h-9 transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong"
                 />
               </label>
             )}
@@ -349,7 +349,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
                   if (!Number.isNaN(v)) onMove?.(v, lng ?? KASHMIR_CENTER[1]);
                 }}
                 placeholder="34.0000"
-                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
+                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong"
               />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -363,7 +363,7 @@ export function MapView({ lat, lng, onMove, trail, height = 300, name, onNameCha
                   if (!Number.isNaN(v)) onMove?.(lat ?? KASHMIR_CENTER[0], v);
                 }}
                 placeholder="74.8000"
-                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400"
+                className="input text-xs h-9 font-mono transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong"
               />
             </label>
           </div>

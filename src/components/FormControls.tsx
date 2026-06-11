@@ -11,7 +11,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className = '', ...props }, ref) => (
     <input
       ref={ref}
-      className={`input transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400 ${className}`}
+      className={`input transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong ${className}`}
       {...props}
     />
   ),
@@ -40,7 +40,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className = '', ...props }, ref) => (
     <textarea
       ref={ref}
-      className={`input transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 dark:focus:ring-purple-400/50 dark:focus:border-purple-400 ${className}`}
+      className={`input transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:border-kong dark:focus:ring-kong/40 dark:focus:border-kong ${className}`}
       {...props}
     />
   ),
@@ -59,7 +59,7 @@ type CheckboxProps = {
 
 export function Checkbox({ label, checked, onChange, accent = 'dal', id }: CheckboxProps) {
   const accentMap: Record<string, string> = {
-    dal: 'accent-purple-600 dark:accent-purple-500',
+    dal: 'accent-kong',
     chinar: 'accent-chinar',
     saffron: 'accent-saffron',
     emerald: 'accent-emerald',
@@ -72,9 +72,9 @@ export function Checkbox({ label, checked, onChange, accent = 'dal', id }: Check
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className={`${accentMap[accent] ?? 'accent-purple-600 dark:accent-purple-500'} w-4 h-4 transition-all duration-200 focus:ring-2 focus:ring-purple-500/50 focus:outline-none`}
+        className={`${accentMap[accent] ?? 'accent-kong'} w-4 h-4 transition-all duration-200 focus:ring-2 focus:ring-kong/40 focus:outline-none`}
       />
-      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-200">{label}</span>
+      <span className="text-sm font-medium text-ink-2 dark:text-dark-text-2 group-hover:text-kong dark:group-hover:text-kong transition-colors duration-200">{label}</span>
     </label>
   );
 }
@@ -90,15 +90,15 @@ const CONTROL_STYLES = {
   padding: '0',
   cursor: 'pointer',
   transition: 'all 200ms ease',
-  '&:hover': { borderColor: '#9333EA', boxShadow: '0 0 0 1px rgba(147, 51, 234, 0.1)' },
+  '&:hover': { borderColor: '#1F9D57', boxShadow: '0 0 0 1px rgba(31, 157, 87, 0.1)' },
 };
 
 const SELECT_STYLES_BASE = {
   control: (base: any, state: any) => ({
     ...base,
     ...CONTROL_STYLES,
-    borderColor: state.isFocused ? '#9333EA' : '#E5D9C5',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
+    borderColor: state.isFocused ? '#1F9D57' : '#E5D9C5',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(31, 157, 87, 0.15)' : 'none',
   }),
   valueContainer: (base: any) => ({
     ...base,
@@ -143,13 +143,13 @@ const SELECT_STYLES_BASE = {
     borderRadius: '4px',
     cursor: 'pointer',
     backgroundColor: state.isSelected
-      ? '#9333EA'
+      ? '#1F9D57'
       : state.isFocused
         ? '#F5EBDC'
         : 'transparent',
     color: state.isSelected ? '#fff' : '#1A1612',
     transition: 'all 150ms ease',
-    '&:active': { backgroundColor: state.isSelected ? '#9333EA' : '#F5EBDC' },
+    '&:active': { backgroundColor: state.isSelected ? '#1F9D57' : '#F5EBDC' },
   }),
   indicatorSeparator: () => ({ display: 'none' }),
   dropdownIndicator: (base: any) => ({
@@ -207,10 +207,10 @@ export function Select({
     ...SELECT_STYLES_BASE,
     control: (base: any, state: any) => ({
       ...SELECT_STYLES_BASE.control(base, state),
-      borderColor: state.isFocused ? '#9333EA' : '#2A3D48',
+      borderColor: state.isFocused ? '#1F9D57' : '#2A3D48',
       backgroundColor: '#172832',
-      boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
-      '&:hover': { borderColor: '#7C3AED' },
+      boxShadow: state.isFocused ? '0 0 0 2px rgba(31, 157, 87, 0.15)' : 'none',
+      '&:hover': { borderColor: '#1F9D57' },
     }),
     valueContainer: (base: any) => ({
       ...SELECT_STYLES_BASE.valueContainer(base),
@@ -231,7 +231,7 @@ export function Select({
     }),
     option: (base: any, state: any) => ({
       ...SELECT_STYLES_BASE.option(base, state),
-      backgroundColor: state.isSelected ? '#9333EA' : state.isFocused ? '#1E3340' : 'transparent',
+      backgroundColor: state.isSelected ? '#1F9D57' : state.isFocused ? '#1E3340' : 'transparent',
       color: state.isSelected ? '#fff' : '#F5EBDC',
       transition: 'all 150ms ease',
     }),
@@ -283,10 +283,10 @@ export function MultiSelect({
     ...SELECT_STYLES_BASE,
     control: (base: any, state: any) => ({
       ...SELECT_STYLES_BASE.control(base, state),
-      borderColor: state.isFocused ? '#9333EA' : '#2A3D48',
+      borderColor: state.isFocused ? '#1F9D57' : '#2A3D48',
       backgroundColor: '#172832',
-      boxShadow: state.isFocused ? '0 0 0 2px rgba(147, 51, 234, 0.15)' : 'none',
-      '&:hover': { borderColor: '#7C3AED' },
+      boxShadow: state.isFocused ? '0 0 0 2px rgba(31, 157, 87, 0.15)' : 'none',
+      '&:hover': { borderColor: '#1F9D57' },
     }),
     valueContainer: (base: any) => ({
       ...SELECT_STYLES_BASE.valueContainer(base),
@@ -307,7 +307,7 @@ export function MultiSelect({
     }),
     option: (base: any, state: any) => ({
       ...SELECT_STYLES_BASE.option(base, state),
-      backgroundColor: state.isSelected ? '#9333EA' : state.isFocused ? '#1E3340' : 'transparent',
+      backgroundColor: state.isSelected ? '#1F9D57' : state.isFocused ? '#1E3340' : 'transparent',
       color: state.isSelected ? '#fff' : '#F5EBDC',
       transition: 'all 150ms ease',
     }),

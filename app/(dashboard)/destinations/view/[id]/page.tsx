@@ -12,7 +12,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   popular: 'bg-emerald-100 text-emerald-800',
   adventure: 'bg-orange-100 text-orange-800',
   nature: 'bg-green-100 text-green-800',
-  cultural: 'bg-purple-100 text-purple-800',
+  cultural: 'bg-kong/15 text-kong-deep',
   spiritual: 'bg-indigo-100 text-indigo-800',
   'hidden-gems': 'bg-amber-100 text-amber-800',
 };
