@@ -2,13 +2,13 @@
 
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/PageHeader';
 import { Section, Field } from '@/components/FormFields';
 import { Input, Textarea, Select, Checkbox, MultiSelect } from '@/components/FormControls';
-import { destinations, categories as categoriesApi, permits, regions as regionsApi, type Destination } from '@/lib/api';
-import { ImageUploader } from '@/components/ImageUploader';
+import { destinations, categories as categoriesApi, permits, regions as regionsApi, images as imagesApi, type Destination } from '@/lib/api';
+import { ImageUploader, StagedImagePicker } from '@/components/ImageUploader';
 import { TRAIL_FEATURES } from '@/components/FeatureChips';
 import { ToggleGrid } from '@/components/ToggleGrid';
 
@@ -109,6 +109,13 @@ export default function DestinationDetail() {
     permits: [],
     categories: [],
   });
+  // Images can only be attached while creating: files are staged locally and
+  // uploaded right after the create call returns the new destination id.
+  const [stagedImages, setStagedImages] = useState<File[]>([]);
+  // If image upload fails after the destination row was created, a retry must
+  // not create a duplicate destination — remember the id and resume uploads.
+  const createdIdRef = useRef<string | null>(null);
+  const uploadedCountRef = useRef(0);
 
   useEffect(() => {
     if (data) setForm(data);
@@ -119,16 +126,29 @@ export default function DestinationDetail() {
       const payload: any = { ...form };
       if (!payload.name?.trim()) throw new Error('Destination name is required.');
       if (!payload.slug?.trim()) payload.slug = slugify(payload.name);
-      if (isNew) return destinations.create(payload);
-      return destinations.update(id, payload);
+      if (!isNew) return destinations.update(id, payload);
+
+      if (!createdIdRef.current) {
+        const res = await destinations.create(payload);
+        createdIdRef.current = res.id ?? null;
+      }
+      const destId = createdIdRef.current;
+      if (destId) {
+        for (const file of [...stagedImages]) {
+          await imagesApi.upload('destination', destId, file, {
+            is_hero: uploadedCountRef.current === 0,
+            sort_order: uploadedCountRef.current,
+          });
+          uploadedCountRef.current += 1;
+          setStagedImages((prev) => prev.filter((f) => f !== file));
+        }
+      }
+      return { id: destId ?? undefined };
     },
-    onSuccess: (res) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['destinations-admin'] });
       qc.invalidateQueries({ queryKey: ['destination', id] });
-      // For a brand-new destination, land on its edit page so the hero gallery
-      // (image uploader) becomes available to attach photos.
-      if (isNew && res?.id) router.replace(`/destinations/${res.id}`);
-      else router.push('/destinations');
+      router.push('/destinations');
     },
   });
 
@@ -169,25 +189,21 @@ export default function DestinationDetail() {
         </div>
       )}
 
-      {/* Hero Gallery - For both new and existing destinations */}
+      {/* Hero Gallery — images can only be added while creating */}
       <div className="p-8 pb-4">
         <Section title="Hero Gallery">
           {isNew ? (
-            <div className="space-y-3">
-              <div className="bg-kong/10 dark:bg-kong/15 border border-kong/30 dark:border-kong-deep rounded-lg p-4">
-                <p className="text-sm font-medium text-kong-deep dark:text-kong">
-                  📸 Save destination first to add images
-                </p>
-                <p className="text-[11px] text-kong-deep dark:text-kong/40 mt-2">
-                  After creating this destination, you'll be able to upload banner images and mark which one appears on the mobile detail screen.
-                </p>
-              </div>
-            </div>
+            <>
+              <StagedImagePicker files={stagedImages} onChange={setStagedImages} />
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-3 leading-relaxed">
+                Images upload when you press Create. The first image becomes the hero banner shown at the top of the mobile detail screen. Images cannot be added after creation.
+              </p>
+            </>
           ) : (
             <>
-              <ImageUploader entityType="destination" entityId={id} />
+              <ImageUploader entityType="destination" entityId={id} canUpload={false} />
               <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-3 leading-relaxed">
-                First image (or the one marked HERO) is displayed at the top of the mobile detail screen. You can upload, edit captions, remove images, or mark one as the hero banner.
+                Images can only be added when a destination is created. You can still edit captions, change which image is the hero banner, or remove images.
               </p>
             </>
           )}
